@@ -1,0 +1,236 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  ADMIN
+  STAFF
+  DOCTOR
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum Gender {
+  FEMALE
+  MALE
+  OTHER
+  UNDISCLOSED
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  SOFT_DELETE
+  LOGIN
+  LOGOUT
+  PASSWORD_RESET
+  VIEW
+  DOWNLOAD
+  UPLOAD
+  REPLACE_FILE
+}
+
+model User {
+  id                  String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  authUserId          String         @unique(map: "users_auth_user_id_key") @db.Uuid
+  email               String         @unique(map: "users_email_key") @db.VarChar(255)
+  role                UserRole       @default(STAFF)
+  status              UserStatus     @default(ACTIVE)
+  lastLoginAt         DateTime?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  deletedAt           DateTime?
+  profile             Profile?
+  doctor              Doctor?
+  createdAppointments Appointment[]  @relation("AppointmentCreatedBy")
+  createdReports      MedicalReport[] @relation("MedicalReportCreatedBy")
+  uploadedAttachments Attachment[]   @relation("AttachmentUploadedBy")
+  auditLogs           AuditLog[]     @relation("AuditLogActor")
+
+  @@index([role, status], map: "users_role_status_idx")
+  @@index([deletedAt], map: "users_deleted_at_idx")
+  @@map("users")
+}
+
+model Profile {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String   @unique(map: "profiles_user_id_key") @db.Uuid
+  fullName   String   @db.VarChar(150)
+  phone      String?  @db.VarChar(20)
+  avatarUrl  String?  @db.VarChar(2048)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  deletedAt  DateTime?
+  user       User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([fullName], map: "profiles_full_name_idx")
+  @@index([deletedAt], map: "profiles_deleted_at_idx")
+  @@map("profiles")
+}
+
+model Patient {
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  fullName        String          @db.VarChar(150)
+  cpf             String          @unique(map: "patients_cpf_key") @db.VarChar(14)
+  birthDate       DateTime?
+  gender          Gender          @default(UNDISCLOSED)
+  phone           String?         @db.VarChar(20)
+  email           String?         @db.VarChar(255)
+  address         String?         @db.VarChar(500)
+  notes           String?         @db.Text
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  deletedAt       DateTime?
+  appointments    Appointment[]
+  medicalReports  MedicalReport[]
+
+  @@index([fullName], map: "patients_full_name_idx")
+  @@index([email], map: "patients_email_idx")
+  @@index([deletedAt], map: "patients_deleted_at_idx")
+  @@map("patients")
+}
+
+model Doctor {
+  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String?         @unique(map: "doctors_user_id_key") @db.Uuid
+  fullName       String          @db.VarChar(150)
+  crm            String          @unique(map: "doctors_crm_key") @db.VarChar(30)
+  specialty      String          @db.VarChar(100)
+  phone          String?         @db.VarChar(20)
+  email          String?         @db.VarChar(255)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  deletedAt      DateTime?
+  user           User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  appointments   Appointment[]
+  medicalReports MedicalReport[]
+
+  @@index([fullName], map: "doctors_full_name_idx")
+  @@index([specialty], map: "doctors_specialty_idx")
+  @@index([deletedAt], map: "doctors_deleted_at_idx")
+  @@map("doctors")
+}
+
+model Appointment {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  patientId       String            @db.Uuid
+  doctorId        String            @db.Uuid
+  createdByUserId String            @db.Uuid
+  startsAt        DateTime          @db.Timestamptz(6)
+  endsAt          DateTime          @db.Timestamptz(6)
+  durationMinutes Int
+  notes           String?           @db.Text
+  status          AppointmentStatus @default(SCHEDULED)
+  confirmedAt     DateTime?         @db.Timestamptz(6)
+  startedAt       DateTime?         @db.Timestamptz(6)
+  completedAt     DateTime?         @db.Timestamptz(6)
+  cancelledAt     DateTime?         @db.Timestamptz(6)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  deletedAt       DateTime?
+  doctor          Doctor            @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+  patient         Patient           @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  createdBy       User              @relation("AppointmentCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  medicalReports  MedicalReport[]
+
+  @@index([doctorId, startsAt], map: "appointments_doctor_starts_at_idx")
+  @@index([patientId, startsAt], map: "appointments_patient_starts_at_idx")
+  @@index([status, startsAt], map: "appointments_status_starts_at_idx")
+  @@index([deletedAt], map: "appointments_deleted_at_idx")
+  @@map("appointments")
+}
+
+model MedicalReport {
+  id                String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title             String        @db.VarChar(150)
+  patientId         String        @db.Uuid
+  doctorId          String        @db.Uuid
+  appointmentId     String?       @db.Uuid
+  createdByUserId   String        @db.Uuid
+  reportDate        DateTime
+  observations      String?       @db.Text
+  specialty         String        @db.VarChar(100)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  deletedAt         DateTime?
+  attachments       Attachment[]
+  appointment       Appointment?  @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  doctor            Doctor        @relation(fields: [doctorId], references: [id], onDelete: Restrict)
+  patient           Patient       @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  createdBy         User          @relation("MedicalReportCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+
+  @@index([patientId, reportDate], map: "medical_reports_patient_report_date_idx")
+  @@index([doctorId, reportDate], map: "medical_reports_doctor_report_date_idx")
+  @@index([specialty], map: "medical_reports_specialty_idx")
+  @@index([deletedAt], map: "medical_reports_deleted_at_idx")
+  @@map("medical_reports")
+}
+
+model Attachment {
+  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  medicalReportId  String        @db.Uuid
+  uploadedByUserId String        @db.Uuid
+  originalName     String        @db.VarChar(255)
+  internalName     String        @db.VarChar(255)
+  mimeType         String        @db.VarChar(100)
+  extension        String        @db.VarChar(10)
+  sizeBytes        Int
+  url              String        @db.VarChar(2048)
+  bucket           String        @db.VarChar(100)
+  path             String        @db.VarChar(2048)
+  hash             String        @db.VarChar(128)
+  version          Int           @default(1)
+  isCurrent        Boolean       @default(true)
+  uploadedAt       DateTime      @default(now())
+  replacedAt       DateTime?
+  deletedAt        DateTime?
+  medicalReport    MedicalReport @relation(fields: [medicalReportId], references: [id], onDelete: Restrict)
+  uploadedBy       User          @relation("AttachmentUploadedBy", fields: [uploadedByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([medicalReportId, version], map: "attachments_medical_report_id_version_key")
+  @@index([medicalReportId, isCurrent], map: "attachments_medical_report_current_idx")
+  @@index([bucket, path], map: "attachments_bucket_path_idx")
+  @@index([hash], map: "attachments_hash_idx")
+  @@index([deletedAt], map: "attachments_deleted_at_idx")
+  @@map("attachments")
+}
+
+model AuditLog {
+  id           String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  actorUserId  String?     @db.Uuid
+  action       AuditAction
+  resourceType String      @db.VarChar(100)
+  resourceId   String?     @db.Uuid
+  metadata     Json?
+  ipAddress    String?     @db.VarChar(45)
+  userAgent    String?     @db.VarChar(500)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  deletedAt    DateTime?
+  actorUser    User?       @relation("AuditLogActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([actorUserId, createdAt], map: "audit_logs_actor_created_at_idx")
+  @@index([resourceType, resourceId], map: "audit_logs_resource_idx")
+  @@index([action, createdAt], map: "audit_logs_action_created_at_idx")
+  @@index([deletedAt], map: "audit_logs_deleted_at_idx")
+  @@map("audit_logs")
+}

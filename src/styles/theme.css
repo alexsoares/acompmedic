@@ -1,0 +1,7 @@
+:root {
+  --appointment-scheduled: #dbeafe;
+  --appointment-confirmed: #d1fae5;
+  --appointment-in-progress: #fef3c7;
+  --appointment-completed: #e4e4e7;
+  --appointment-cancelled: #ffe4e6;
+}
