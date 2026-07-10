@@ -50,5 +50,9 @@
   },
   "empty": {
     "noResults": "Nenhum resultado encontrado."
-  }
+  },
+  "dashboard": {
+    "appName": "AcompMedic",
+    "appSubtitle": "Backoffice clínico"
+  }  
 }
