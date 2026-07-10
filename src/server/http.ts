@@ -5,6 +5,7 @@ import type { z } from "zod";
 import { env } from "@/lib/env";
 import { logger } from "@/server/logger";
 import { requireAuthenticatedAppUser } from "@/server/security/auth";
+import { ForbiddenError } from "@/server/security/authorize";
 import { assertValidCsrfToken } from "@/server/security/csrf";
 import { enforceRateLimit } from "@/server/security/rate-limit";
 
@@ -66,6 +67,10 @@ export async function withProtectedRoute(
 
     if (error instanceof Error && error.message === "Unauthorized.") {
       return jsonError(error.message, 401);
+    }
+
+    if (error instanceof ForbiddenError) {
+      return jsonError(error.message, 403);
     }
 
     if (error instanceof Error && error.message === "Invalid CSRF token.") {

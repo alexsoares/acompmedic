@@ -1,0 +1,19 @@
+{
+  "title": "Patients",
+  "description": "Register, edit, search, and remove clinic patients.",
+  "form": {
+    "newPatient": "New patient",
+    "fullName": "Full name",
+    "cpf": "CPF",
+    "birthDate": "Date of birth",
+    "gender": "Gender",
+    "phone": "Phone",
+    "email": "Email",
+    "address": "Address",
+    "notes": "Notes",
+    "assignedDoctor": "Assigned doctor",
+    "save": "Save patient",
+    "searchPlaceholder": "Search by name, CPF or email"
+  },
+  "empty": "No patients found."
+}

@@ -1,0 +1,23 @@
+{
+  "title": "Reports",
+  "description": "Store and manage patient medical documents.",
+  "form": {
+    "newReport": "New report",
+    "title": "Title",
+    "patient": "Patient",
+    "doctor": "Responsible doctor",
+    "appointment": "Linked appointment (optional)",
+    "specialty": "Specialty",
+    "reportDate": "Report date",
+    "observations": "Observations",
+    "file": "File (PDF or TXT)",
+    "save": "Save report"
+  },
+  "empty": "No reports found.",
+  "actions": {
+    "download": "Download",
+    "view": "View",
+    "replace": "Replace file",
+    "delete": "Delete report"
+  }
+}

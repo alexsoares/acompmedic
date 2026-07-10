@@ -1,0 +1,15 @@
+{
+  "title": "Doctors",
+  "description": "Manage the clinic's doctor registrations.",
+  "form": {
+    "newDoctor": "New doctor",
+    "fullName": "Full name",
+    "crm": "Medical license (CRM)",
+    "specialty": "Specialty",
+    "phone": "Phone",
+    "email": "Email",
+    "save": "Save doctor",
+    "searchPlaceholder": "Search by name or specialty"
+  },
+  "empty": "No doctors found."
+}

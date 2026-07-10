@@ -1,0 +1,21 @@
+{
+  "title": "Schedule",
+  "description": "View and manage scheduled appointments.",
+  "form": {
+    "newAppointment": "New appointment",
+    "patient": "Patient",
+    "doctor": "Doctor",
+    "startsAt": "Start date and time",
+    "duration": "Duration (minutes)",
+    "status": "Status",
+    "notes": "Notes",
+    "save": "Save appointment"
+  },
+  "empty": "No appointments found.",
+  "actions": {
+    "cancel": "Cancel appointment",
+    "confirm": "Confirm",
+    "start": "Start appointment",
+    "complete": "Complete"
+  }
+}

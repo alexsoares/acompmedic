@@ -1,29 +1,35 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { Activity, CalendarDays, FileText, Home, LogOut, Stethoscope, Users } from "lucide-react";
 
 import { signOut } from "@/actions/auth-actions";
+import { LocaleSwitcher } from "@/components/dashboard/locale-switcher";
 
 type DashboardShellProps = {
   children: React.ReactNode;
   user: {
     email: string;
     role: string;
+    locale: string;
     profile?: {
       fullName: string;
     } | null;
   };
 };
 
-const navigation = [
-  { href: "/dashboard", label: "Visão geral", icon: Home },
-  { href: "/dashboard/agenda", label: "Agenda", icon: CalendarDays },
-  { href: "/dashboard/pacientes", label: "Pacientes", icon: Users },
-  { href: "/dashboard/medicos", label: "Médicos", icon: Stethoscope },
-  { href: "/dashboard/laudos", label: "Laudos", icon: FileText },
-];
-
-export function DashboardShell({ children, user }: DashboardShellProps) {
+export async function DashboardShell({ children, user }: DashboardShellProps) {
   const displayName = user.profile?.fullName ?? user.email;
+  const t = await getTranslations("common");
+
+  const navigation = [
+    { href: "/dashboard", label: t("nav.overview"), icon: Home },
+    { href: "/dashboard/agenda", label: t("nav.agenda"), icon: CalendarDays },
+    { href: "/dashboard/pacientes", label: t("nav.patients"), icon: Users },
+    ...(user.role !== "PATIENT"
+      ? [{ href: "/dashboard/medicos", label: t("nav.doctors"), icon: Stethoscope }]
+      : []),
+    { href: "/dashboard/laudos", label: t("nav.reports"), icon: FileText },
+  ];
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-950">
@@ -33,8 +39,8 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
             <Activity className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-sm font-semibold">AcompMedic</p>
-            <p className="text-xs text-slate-500">Dashboard Médico</p>
+            <p className="text-sm font-semibold">{t("dashboard.appName") ? "AcompMedic" : "AcompMedic"}</p>
+            <p className="text-xs text-slate-500">{t("dashboard.appSubtitle") ? "Dashboard Médico" : "Dashboard"}</p>
           </div>
         </div>
         <nav className="flex-1 space-y-1 px-3 py-4">
@@ -52,12 +58,15 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
             );
           })}
         </nav>
-        <form action={signOut} className="border-t border-slate-200 p-3">
-          <button className="flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-rose-50 hover:text-rose-700">
-            <LogOut className="h-4 w-4" />
-            Sair
-          </button>
-        </form>
+        <div className="p-3 border-t border-slate-200 flex flex-col gap-2">
+          <LocaleSwitcher currentLocale={user.locale} isLoggedIn={true} />
+          <form action={signOut}>
+            <button className="flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm font-medium text-slate-700 transition hover:bg-rose-50 hover:text-rose-700">
+              <LogOut className="h-4 w-4" />
+              {t("nav.signOut")}
+            </button>
+          </form>
+        </div>
       </aside>
 
       <div className="lg:pl-64">
@@ -78,14 +87,19 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
                 );
               })}
             </nav>
-            <div>
-              <p className="text-sm font-semibold">{displayName}</p>
-              <p className="text-xs uppercase tracking-wide text-slate-500">{user.role}</p>
+            <div className="flex items-center gap-4">
+              <div className="lg:hidden">
+                <LocaleSwitcher currentLocale={user.locale} isLoggedIn={true} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold">{displayName}</p>
+                <p className="text-xs uppercase tracking-wide text-slate-500">{t(`roles.${user.role}`)}</p>
+              </div>
             </div>
-            <form action={signOut}>
+            <form action={signOut} className="hidden sm:block">
               <button className="inline-flex h-10 items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
                 <LogOut className="h-4 w-4" />
-                Sair
+                {t("nav.signOut")}
               </button>
             </form>
           </div>

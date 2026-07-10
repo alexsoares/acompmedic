@@ -1,0 +1,53 @@
+{
+  "nav": {
+    "overview": "Visão geral",
+    "agenda": "Agenda",
+    "patients": "Pacientes",
+    "doctors": "Médicos",
+    "reports": "Laudos",
+    "signOut": "Sair"
+  },
+  "actions": {
+    "save": "Salvar",
+    "delete": "Excluir",
+    "search": "Buscar",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "edit": "Editar",
+    "create": "Criar",
+    "close": "Fechar",
+    "loading": "Carregando..."
+  },
+  "status": {
+    "active": "Ativo",
+    "inactive": "Inativo",
+    "suspended": "Suspenso"
+  },
+  "roles": {
+    "ADMIN": "Administrador",
+    "DOCTOR": "Médico",
+    "PATIENT": "Paciente"
+  },
+  "gender": {
+    "FEMALE": "Feminino",
+    "MALE": "Masculino",
+    "OTHER": "Outro",
+    "UNDISCLOSED": "Não informado"
+  },
+  "appointmentStatus": {
+    "SCHEDULED": "Agendada",
+    "CONFIRMED": "Confirmada",
+    "IN_PROGRESS": "Em atendimento",
+    "COMPLETED": "Finalizada",
+    "CANCELLED": "Cancelada"
+  },
+  "errors": {
+    "unexpected": "Erro inesperado. Tente novamente.",
+    "notFound": "Registro não encontrado.",
+    "forbidden": "Você não tem permissão para esta ação.",
+    "unauthorized": "Sessão expirada. Faça login novamente."
+  },
+  "empty": {
+    "noResults": "Nenhum resultado encontrado."
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "title": "Laudos",
+  "description": "Armazene e gerencie os documentos médicos dos pacientes.",
+  "form": {
+    "newReport": "Novo laudo",
+    "title": "Título",
+    "patient": "Paciente",
+    "doctor": "Médico responsável",
+    "appointment": "Consulta vinculada (opcional)",
+    "specialty": "Especialidade",
+    "reportDate": "Data do laudo",
+    "observations": "Observações",
+    "file": "Arquivo (PDF ou TXT)",
+    "save": "Salvar laudo"
+  },
+  "empty": "Nenhum laudo encontrado.",
+  "actions": {
+    "download": "Baixar",
+    "view": "Visualizar",
+    "replace": "Substituir arquivo",
+    "delete": "Excluir laudo"
+  }
+}

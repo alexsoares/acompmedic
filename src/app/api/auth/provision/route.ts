@@ -26,10 +26,17 @@ export async function POST(request: NextRequest) {
     create: {
       authUserId: user.id,
       email: user.email,
+      role: "PATIENT",
       lastLoginAt: new Date(),
       profile: {
         create: {
           fullName,
+        },
+      },
+      patientRecord: {
+        create: {
+          fullName,
+          email: user.email,
         },
       },
     },

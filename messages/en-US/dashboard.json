@@ -1,0 +1,19 @@
+{
+  "overview": {
+    "title": "Overview",
+    "description": "Track registrations, upcoming appointments, and clinical documents.",
+    "cards": {
+      "patients": "Active patients",
+      "doctors": "Registered doctors",
+      "appointments": "Appointments",
+      "reports": "Reports"
+    },
+    "nextAppointments": {
+      "title": "Upcoming appointments",
+      "openAgenda": "Open schedule",
+      "empty": "No upcoming appointments."
+    }
+  },
+  "appName": "AcompMedic",
+  "appSubtitle": "Medical Dashboard"
+}

@@ -1,0 +1,53 @@
+{
+  "nav": {
+    "overview": "Overview",
+    "agenda": "Schedule",
+    "patients": "Patients",
+    "doctors": "Doctors",
+    "reports": "Reports",
+    "signOut": "Sign out"
+  },
+  "actions": {
+    "save": "Save",
+    "delete": "Delete",
+    "search": "Search",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "edit": "Edit",
+    "create": "Create",
+    "close": "Close",
+    "loading": "Loading..."
+  },
+  "status": {
+    "active": "Active",
+    "inactive": "Inactive",
+    "suspended": "Suspended"
+  },
+  "roles": {
+    "ADMIN": "Administrator",
+    "DOCTOR": "Doctor",
+    "PATIENT": "Patient"
+  },
+  "gender": {
+    "FEMALE": "Female",
+    "MALE": "Male",
+    "OTHER": "Other",
+    "UNDISCLOSED": "Not disclosed"
+  },
+  "appointmentStatus": {
+    "SCHEDULED": "Scheduled",
+    "CONFIRMED": "Confirmed",
+    "IN_PROGRESS": "In progress",
+    "COMPLETED": "Completed",
+    "CANCELLED": "Cancelled"
+  },
+  "errors": {
+    "unexpected": "Unexpected error. Please try again.",
+    "notFound": "Record not found.",
+    "forbidden": "You do not have permission for this action.",
+    "unauthorized": "Session expired. Please sign in again."
+  },
+  "empty": {
+    "noResults": "No results found."
+  }
+}

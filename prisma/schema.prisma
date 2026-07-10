@@ -10,8 +10,8 @@ datasource db {
 
 enum UserRole {
   ADMIN
-  STAFF
   DOCTOR
+  PATIENT
 }
 
 enum UserStatus {
@@ -53,14 +53,18 @@ model User {
   id                  String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   authUserId          String         @unique(map: "users_auth_user_id_key") @db.Uuid
   email               String         @unique(map: "users_email_key") @db.VarChar(255)
-  role                UserRole       @default(STAFF)
+  role                UserRole       @default(PATIENT)
   status              UserStatus     @default(ACTIVE)
+  locale              String         @default("pt-BR") @db.VarChar(10)
   lastLoginAt         DateTime?
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
   deletedAt           DateTime?
   profile             Profile?
-  doctor              Doctor?
+  // Se este User tem role=DOCTOR, este é o vínculo com seu registro cadastral de Doctor
+  doctorRecord        Doctor?        @relation("DoctorAccount")
+  // Se este User tem role=PATIENT, este é o vínculo com seu registro cadastral de Patient
+  patientRecord       Patient?       @relation("PatientAccount")
   createdPatients     Patient[]      @relation("PatientCreatedBy")
   createdDoctors      Doctor[]       @relation("DoctorCreatedBy")
   createdAppointments Appointment[]  @relation("AppointmentCreatedBy")
@@ -90,24 +94,33 @@ model Profile {
 }
 
 model Patient {
-  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  createdByUserId String?         @db.Uuid
-  fullName        String          @db.VarChar(150)
-  cpf             String          @unique(map: "patients_cpf_key") @db.VarChar(14)
-  birthDate       DateTime?
-  gender          Gender          @default(UNDISCLOSED)
-  phone           String?         @db.VarChar(20)
-  email           String?         @db.VarChar(255)
-  address         String?         @db.VarChar(500)
-  notes           String?         @db.Text
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  deletedAt       DateTime?
-  createdBy       User?           @relation("PatientCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  appointments    Appointment[]
-  medicalReports  MedicalReport[]
+  id               String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  // Auditoria: quem digitou/criou o registro no sistema
+  createdByUserId  String?         @db.Uuid
+  // Vínculo de conta: se este paciente tem login, qual User é ele
+  userId           String?         @unique(map: "patients_user_id_key") @db.Uuid
+  // Responsabilidade clínica: qual médico é responsável por este paciente
+  assignedDoctorId String?         @db.Uuid
+  fullName         String          @db.VarChar(150)
+  cpf              String?         @unique(map: "patients_cpf_key") @db.VarChar(14)
+  birthDate        DateTime?
+  gender           Gender          @default(UNDISCLOSED)
+  phone            String?         @db.VarChar(20)
+  email            String?         @db.VarChar(255)
+  address          String?         @db.VarChar(500)
+  notes            String?         @db.Text
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  deletedAt        DateTime?
+  createdBy        User?           @relation("PatientCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  userAccount      User?           @relation("PatientAccount", fields: [userId], references: [id], onDelete: SetNull)
+  assignedDoctor   Doctor?         @relation("PatientAssignedDoctor", fields: [assignedDoctorId], references: [id], onDelete: SetNull)
+  appointments     Appointment[]
+  medicalReports   MedicalReport[]
 
   @@index([createdByUserId], map: "patients_created_by_user_id_idx")
+  @@index([assignedDoctorId], map: "patients_assigned_doctor_id_idx")
+  @@index([userId], map: "patients_user_id_idx")
   @@index([fullName], map: "patients_full_name_idx")
   @@index([email], map: "patients_email_idx")
   @@index([deletedAt], map: "patients_deleted_at_idx")
@@ -115,21 +128,23 @@ model Patient {
 }
 
 model Doctor {
-  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId         String?         @unique(map: "doctors_user_id_key") @db.Uuid
-  createdByUserId String?        @db.Uuid
-  fullName       String          @db.VarChar(150)
-  crm            String          @unique(map: "doctors_crm_key") @db.VarChar(30)
-  specialty      String          @db.VarChar(100)
-  phone          String?         @db.VarChar(20)
-  email          String?         @db.VarChar(255)
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  deletedAt      DateTime?
-  user           User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
-  createdBy      User?           @relation("DoctorCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  appointments   Appointment[]
-  medicalReports MedicalReport[]
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  // Vínculo de conta: se este médico tem login, qual User é ele
+  userId          String?         @unique(map: "doctors_user_id_key") @db.Uuid
+  createdByUserId String?         @db.Uuid
+  fullName        String          @db.VarChar(150)
+  crm             String          @unique(map: "doctors_crm_key") @db.VarChar(30)
+  specialty       String          @db.VarChar(100)
+  phone           String?         @db.VarChar(20)
+  email           String?         @db.VarChar(255)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  deletedAt       DateTime?
+  userAccount     User?           @relation("DoctorAccount", fields: [userId], references: [id], onDelete: SetNull)
+  createdBy       User?           @relation("DoctorCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  appointments    Appointment[]
+  medicalReports  MedicalReport[]
+  assignedPatients Patient[]      @relation("PatientAssignedDoctor")
 
   @@index([createdByUserId], map: "doctors_created_by_user_id_idx")
   @@index([fullName], map: "doctors_full_name_idx")

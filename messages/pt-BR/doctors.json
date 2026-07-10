@@ -1,0 +1,15 @@
+{
+  "title": "Médicos",
+  "description": "Gerencie o cadastro dos médicos da clínica.",
+  "form": {
+    "newDoctor": "Novo médico",
+    "fullName": "Nome completo",
+    "crm": "CRM",
+    "specialty": "Especialidade",
+    "phone": "Telefone",
+    "email": "Email",
+    "save": "Salvar médico",
+    "searchPlaceholder": "Buscar por nome ou especialidade"
+  },
+  "empty": "Nenhum médico encontrado."
+}

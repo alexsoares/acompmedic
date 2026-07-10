@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { AppointmentStatus, Gender } from "@prisma/client";
+import { AppointmentStatus, Gender, Prisma } from "@prisma/client";
 
 import { PrismaAppointmentRepository } from "@/features/appointments/repository/appointment-repository";
 import { AppointmentService } from "@/features/appointments/services/appointment-service";
@@ -11,6 +11,7 @@ import { MedicalReportStorageService } from "@/features/medical-reports/services
 import { env } from "@/lib/env";
 import { db } from "@/server/db";
 import { requireAuthenticatedAppUser } from "@/server/security/auth";
+import { resolveLinkedIds, ForbiddenError } from "@/server/security/authorize";
 import { createMedicalReportsStorageBucket } from "@/server/supabase/storage";
 
 function value(formData: FormData, key: string) {
@@ -33,14 +34,35 @@ function parseLocalDateTime(input: string) {
   return date;
 }
 
+export async function updateUserLocale(locale: string) {
+  const appUser = await requireAuthenticatedAppUser();
+  await db.user.update({
+    where: { id: appUser.id },
+    data: { locale },
+  });
+}
+
 export async function createPatient(formData: FormData) {
   const appUser = await requireAuthenticatedAppUser();
+
+  if (appUser.role === "PATIENT") {
+    throw new ForbiddenError("Pacientes não podem criar registros de pacientes.");
+  }
+
+  const { doctorId } = await resolveLinkedIds(appUser.id);
+  let assignedDoctorId = nullableValue(formData, "assignedDoctorId");
+
+  // Se for médico, sempre auto-atribui o paciente a ele mesmo
+  if (appUser.role === "DOCTOR") {
+    assignedDoctorId = doctorId;
+  }
 
   await db.patient.create({
     data: {
       createdByUserId: appUser.id,
+      assignedDoctorId,
       fullName: value(formData, "fullName"),
-      cpf: value(formData, "cpf"),
+      cpf: nullableValue(formData, "cpf"),
       birthDate: value(formData, "birthDate") ? new Date(value(formData, "birthDate")) : null,
       gender: (value(formData, "gender") as Gender) || Gender.UNDISCLOSED,
       phone: nullableValue(formData, "phone"),
@@ -55,28 +77,42 @@ export async function createPatient(formData: FormData) {
 
 export async function updatePatient(formData: FormData) {
   const appUser = await requireAuthenticatedAppUser();
+  const id = value(formData, "id");
 
-  await db.patient.updateMany({
-    where: { id: value(formData, "id"), createdByUserId: appUser.id, deletedAt: null },
-    data: {
-      fullName: value(formData, "fullName"),
-      cpf: value(formData, "cpf"),
-      birthDate: value(formData, "birthDate") ? new Date(value(formData, "birthDate")) : null,
-      gender: (value(formData, "gender") as Gender) || Gender.UNDISCLOSED,
-      phone: nullableValue(formData, "phone"),
-      email: nullableValue(formData, "email"),
-      address: nullableValue(formData, "address"),
-    },
+  await assertOwnedPatient(id, appUser);
+
+  const data: Prisma.PatientUpdateInput = {
+    fullName: value(formData, "fullName"),
+    cpf: nullableValue(formData, "cpf"),
+    birthDate: value(formData, "birthDate") ? new Date(value(formData, "birthDate")) : null,
+    gender: (value(formData, "gender") as Gender) || Gender.UNDISCLOSED,
+    phone: nullableValue(formData, "phone"),
+    email: nullableValue(formData, "email"),
+    address: nullableValue(formData, "address"),
+  };
+
+  if (appUser.role === "ADMIN") {
+    const docId = nullableValue(formData, "assignedDoctorId");
+    data.assignedDoctor = docId ? { connect: { id: docId } } : { disconnect: true };
+  }
+
+  await db.patient.update({
+    where: { id },
+    data,
   });
 
   revalidatePath("/dashboard/pacientes");
+  redirect("/dashboard/pacientes");
 }
 
 export async function deletePatient(formData: FormData) {
   const appUser = await requireAuthenticatedAppUser();
+  const id = value(formData, "id");
 
-  await db.patient.updateMany({
-    where: { id: value(formData, "id"), createdByUserId: appUser.id, deletedAt: null },
+  await assertOwnedPatient(id, appUser);
+
+  await db.patient.update({
+    where: { id },
     data: { deletedAt: new Date() },
   });
 
@@ -85,6 +121,10 @@ export async function deletePatient(formData: FormData) {
 
 export async function createDoctor(formData: FormData) {
   const appUser = await requireAuthenticatedAppUser();
+
+  if (appUser.role !== "ADMIN") {
+    throw new ForbiddenError("Apenas administradores podem gerenciar médicos.");
+  }
 
   await db.doctor.create({
     data: {
@@ -103,8 +143,12 @@ export async function createDoctor(formData: FormData) {
 export async function updateDoctor(formData: FormData) {
   const appUser = await requireAuthenticatedAppUser();
 
-  await db.doctor.updateMany({
-    where: { id: value(formData, "id"), createdByUserId: appUser.id, deletedAt: null },
+  if (appUser.role !== "ADMIN") {
+    throw new ForbiddenError("Apenas administradores podem gerenciar médicos.");
+  }
+
+  await db.doctor.update({
+    where: { id: value(formData, "id") },
     data: {
       fullName: value(formData, "fullName"),
       crm: value(formData, "crm"),
@@ -120,8 +164,12 @@ export async function updateDoctor(formData: FormData) {
 export async function deleteDoctor(formData: FormData) {
   const appUser = await requireAuthenticatedAppUser();
 
-  await db.doctor.updateMany({
-    where: { id: value(formData, "id"), createdByUserId: appUser.id, deletedAt: null },
+  if (appUser.role !== "ADMIN") {
+    throw new ForbiddenError("Apenas administradores podem gerenciar médicos.");
+  }
+
+  await db.doctor.update({
+    where: { id: value(formData, "id") },
     data: { deletedAt: new Date() },
   });
 
@@ -130,6 +178,11 @@ export async function deleteDoctor(formData: FormData) {
 
 export async function createAppointment(formData: FormData) {
   const appUser = await requireAuthenticatedAppUser();
+
+  if (appUser.role === "PATIENT") {
+    throw new ForbiddenError("Pacientes não podem criar consultas.");
+  }
+
   const startsAt = parseLocalDateTime(value(formData, "startsAt"));
   const durationMinutes = Number(value(formData, "durationMinutes") || "30");
   const endsAt = new Date(startsAt.getTime() + durationMinutes * 60_000);
@@ -137,8 +190,8 @@ export async function createAppointment(formData: FormData) {
   const patientId = value(formData, "patientId");
   const doctorId = value(formData, "doctorId");
 
-  await assertOwnedPatient(patientId, appUser.id);
-  await assertOwnedDoctor(doctorId, appUser.id);
+  await assertOwnedPatient(patientId, appUser);
+  await assertOwnedDoctor(doctorId, appUser);
 
   await service.create(
     {
@@ -158,11 +211,19 @@ export async function createAppointment(formData: FormData) {
 
 export async function updateAppointment(formData: FormData) {
   const appUser = await requireAuthenticatedAppUser();
+  const id = value(formData, "id");
+
+  if (appUser.role === "PATIENT") {
+    throw new ForbiddenError("Pacientes não podem modificar consultas.");
+  }
+
+  await assertOwnedAppointment(id, appUser);
+
   const startsAt = parseLocalDateTime(value(formData, "startsAt"));
   const durationMinutes = Number(value(formData, "durationMinutes") || "30");
 
-  await db.appointment.updateMany({
-    where: { id: value(formData, "id"), createdByUserId: appUser.id, deletedAt: null },
+  await db.appointment.update({
+    where: { id },
     data: {
       startsAt,
       endsAt: new Date(startsAt.getTime() + durationMinutes * 60_000),
@@ -178,10 +239,16 @@ export async function updateAppointment(formData: FormData) {
 
 export async function cancelAppointment(formData: FormData) {
   const appUser = await requireAuthenticatedAppUser();
-  const service = new AppointmentService(new PrismaAppointmentRepository());
-  await assertOwnedAppointment(value(formData, "id"), appUser.id);
+  const id = value(formData, "id");
 
-  await service.cancel(value(formData, "id"), { actorUserId: appUser.id });
+  if (appUser.role === "PATIENT") {
+    throw new ForbiddenError("Pacientes não podem cancelar consultas.");
+  }
+
+  await assertOwnedAppointment(id, appUser);
+
+  const service = new AppointmentService(new PrismaAppointmentRepository());
+  await service.cancel(id, { actorUserId: appUser.id });
 
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/agenda");
@@ -189,6 +256,11 @@ export async function cancelAppointment(formData: FormData) {
 
 export async function createMedicalReport(formData: FormData) {
   const appUser = await requireAuthenticatedAppUser();
+
+  if (appUser.role === "PATIENT") {
+    throw new ForbiddenError("Pacientes não podem criar laudos.");
+  }
+
   const file = formData.get("file");
 
   if (!(file instanceof File) || file.size === 0) {
@@ -199,11 +271,11 @@ export async function createMedicalReport(formData: FormData) {
   const doctorId = value(formData, "doctorId");
   const appointmentId = nullableValue(formData, "appointmentId");
 
-  await assertOwnedPatient(patientId, appUser.id);
-  await assertOwnedDoctor(doctorId, appUser.id);
+  await assertOwnedPatient(patientId, appUser);
+  await assertOwnedDoctor(doctorId, appUser);
 
   if (appointmentId) {
-    await assertOwnedAppointment(appointmentId, appUser.id);
+    await assertOwnedAppointment(appointmentId, appUser);
   }
 
   const report = await db.medicalReport.create({
@@ -241,9 +313,17 @@ export async function createMedicalReport(formData: FormData) {
 
 export async function deleteMedicalReport(formData: FormData) {
   const appUser = await requireAuthenticatedAppUser();
+  const id = value(formData, "id");
 
-  await db.medicalReport.updateMany({
-    where: { id: value(formData, "id"), createdByUserId: appUser.id, deletedAt: null },
+  if (appUser.role === "PATIENT") {
+    throw new ForbiddenError("Pacientes não podem excluir laudos.");
+  }
+
+  // Verificar se o usuário tem acesso ao laudo para poder deletar
+  await assertOwnedMedicalReport(id, appUser);
+
+  await db.medicalReport.update({
+    where: { id },
     data: { deletedAt: new Date() },
   });
 
@@ -256,35 +336,77 @@ export async function searchRedirect(formData: FormData) {
   redirect(q ? `${path}?q=${encodeURIComponent(q)}` : path);
 }
 
-async function assertOwnedPatient(patientId: string, userId: string) {
+async function assertOwnedPatient(patientId: string, appUser: { id: string; role: string }) {
+  const { doctorId } = await resolveLinkedIds(appUser.id);
   const patient = await db.patient.findFirst({
-    where: { id: patientId, createdByUserId: userId, deletedAt: null },
+    where: {
+      id: patientId,
+      deletedAt: null,
+      ...(appUser.role === "ADMIN"
+        ? {}
+        : appUser.role === "DOCTOR"
+        ? { assignedDoctorId: doctorId }
+        : { userId: appUser.id }),
+    },
     select: { id: true },
   });
 
   if (!patient) {
-    throw new Error("Paciente não encontrado para este usuário.");
+    throw new ForbiddenError("Paciente não encontrado ou sem permissão de acesso.");
   }
 }
 
-async function assertOwnedDoctor(doctorId: string, userId: string) {
-  const doctor = await db.doctor.findFirst({
-    where: { id: doctorId, createdByUserId: userId, deletedAt: null },
+async function assertOwnedDoctor(doctorId: string, appUser: { id: string; role: string }) {
+  const docRecord = await db.doctor.findFirst({
+    where: {
+      id: doctorId,
+      deletedAt: null,
+      ...(appUser.role === "ADMIN" ? {} : { userId: appUser.id }),
+    },
     select: { id: true },
   });
 
-  if (!doctor) {
-    throw new Error("Médico não encontrado para este usuário.");
+  if (!docRecord) {
+    throw new ForbiddenError("Médico não encontrado ou sem permissão de acesso.");
   }
 }
 
-async function assertOwnedAppointment(appointmentId: string, userId: string) {
+async function assertOwnedAppointment(appointmentId: string, appUser: { id: string; role: string }) {
+  const { doctorId, patientId } = await resolveLinkedIds(appUser.id);
   const appointment = await db.appointment.findFirst({
-    where: { id: appointmentId, createdByUserId: userId, deletedAt: null },
+    where: {
+      id: appointmentId,
+      deletedAt: null,
+      ...(appUser.role === "ADMIN"
+        ? {}
+        : appUser.role === "DOCTOR"
+        ? { doctorId: doctorId ?? "00000000-0000-0000-0000-000000000000" }
+        : { patientId: patientId ?? "00000000-0000-0000-0000-000000000000" }),
+    },
     select: { id: true },
   });
 
   if (!appointment) {
-    throw new Error("Consulta não encontrada para este usuário.");
+    throw new ForbiddenError("Consulta não encontrada ou sem permissão de acesso.");
+  }
+}
+
+async function assertOwnedMedicalReport(reportId: string, appUser: { id: string; role: string }) {
+  const { doctorId, patientId } = await resolveLinkedIds(appUser.id);
+  const report = await db.medicalReport.findFirst({
+    where: {
+      id: reportId,
+      deletedAt: null,
+      ...(appUser.role === "ADMIN"
+        ? {}
+        : appUser.role === "DOCTOR"
+        ? { doctorId: doctorId ?? "00000000-0000-0000-0000-000000000000" }
+        : { patientId: patientId ?? "00000000-0000-0000-0000-000000000000" }),
+    },
+    select: { id: true },
+  });
+
+  if (!report) {
+    throw new ForbiddenError("Laudo não encontrado ou sem permissão de acesso.");
   }
 }

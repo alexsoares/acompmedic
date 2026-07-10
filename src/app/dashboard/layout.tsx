@@ -12,6 +12,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     select: {
       email: true,
       role: true,
+      locale: true,
       profile: {
         select: {
           fullName: true,

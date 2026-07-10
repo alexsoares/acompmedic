@@ -1,0 +1,19 @@
+{
+  "overview": {
+    "title": "Visão geral",
+    "description": "Acompanhe os cadastros, próximas consultas e documentos clínicos da operação.",
+    "cards": {
+      "patients": "Pacientes ativos",
+      "doctors": "Médicos cadastrados",
+      "appointments": "Consultas",
+      "reports": "Laudos"
+    },
+    "nextAppointments": {
+      "title": "Próximas consultas",
+      "openAgenda": "Abrir agenda",
+      "empty": "Nenhuma consulta futura."
+    }
+  },
+  "appName": "AcompMedic",
+  "appSubtitle": "Dashboard Médico"
+}

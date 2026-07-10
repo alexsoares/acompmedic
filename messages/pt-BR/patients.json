@@ -1,0 +1,19 @@
+{
+  "title": "Pacientes",
+  "description": "Cadastre, edite, pesquise e remova pacientes da clínica.",
+  "form": {
+    "newPatient": "Novo paciente",
+    "fullName": "Nome completo",
+    "cpf": "CPF",
+    "birthDate": "Nascimento",
+    "gender": "Gênero",
+    "phone": "Telefone",
+    "email": "Email",
+    "address": "Endereço",
+    "notes": "Observações",
+    "assignedDoctor": "Médico responsável",
+    "save": "Salvar paciente",
+    "searchPlaceholder": "Buscar por nome, CPF ou email"
+  },
+  "empty": "Nenhum paciente encontrado."
+}

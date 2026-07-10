@@ -10,6 +10,14 @@ export async function middleware(request: NextRequest) {
   applySecurityHeaders(response);
   ensureCsrfCookie(request, response);
 
+  // Initialize language locale cookie if not set
+  const localeCookie = request.cookies.get("NEXT_LOCALE")?.value;
+  if (!localeCookie) {
+    const acceptLang = request.headers.get("accept-language") || "";
+    const resolvedLocale = acceptLang.toLowerCase().startsWith("en") ? "en-US" : "pt-BR";
+    response.cookies.set("NEXT_LOCALE", resolvedLocale, { path: "/", maxAge: 31536000, sameSite: "lax" });
+  }
+
   if (request.nextUrl.pathname.startsWith("/dashboard")) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -39,7 +47,22 @@ export async function middleware(request: NextRequest) {
       const loginUrl = request.nextUrl.clone();
       loginUrl.pathname = "/login";
       loginUrl.searchParams.set("next", request.nextUrl.pathname);
-      return NextResponse.redirect(loginUrl);
+      const redirectResponse = NextResponse.redirect(loginUrl);
+
+      // Preserve security headers, csrf, and locale cookies on redirect
+      applySecurityHeaders(redirectResponse);
+      ensureCsrfCookie(request, redirectResponse);
+      
+      const currentLocale = request.cookies.get("NEXT_LOCALE")?.value;
+      if (currentLocale) {
+        redirectResponse.cookies.set("NEXT_LOCALE", currentLocale, { path: "/", maxAge: 31536000, sameSite: "lax" });
+      } else {
+        const acceptLang = request.headers.get("accept-language") || "";
+        const resolvedLocale = acceptLang.toLowerCase().startsWith("en") ? "en-US" : "pt-BR";
+        redirectResponse.cookies.set("NEXT_LOCALE", resolvedLocale, { path: "/", maxAge: 31536000, sameSite: "lax" });
+      }
+
+      return redirectResponse;
     }
   }
 

@@ -1,0 +1,21 @@
+{
+  "title": "Agenda",
+  "description": "Visualize e gerencie as consultas agendadas.",
+  "form": {
+    "newAppointment": "Nova consulta",
+    "patient": "Paciente",
+    "doctor": "Médico",
+    "startsAt": "Data e hora de início",
+    "duration": "Duração (minutos)",
+    "status": "Status",
+    "notes": "Observações",
+    "save": "Salvar consulta"
+  },
+  "empty": "Nenhuma consulta encontrada.",
+  "actions": {
+    "cancel": "Cancelar consulta",
+    "confirm": "Confirmar",
+    "start": "Iniciar atendimento",
+    "complete": "Finalizar"
+  }
+}
