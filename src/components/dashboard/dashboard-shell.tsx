@@ -25,9 +25,7 @@ export async function DashboardShell({ children, user }: DashboardShellProps) {
     { href: "/dashboard", label: t("nav.overview"), icon: Home },
     { href: "/dashboard/agenda", label: t("nav.agenda"), icon: CalendarDays },
     { href: "/dashboard/pacientes", label: t("nav.patients"), icon: Users },
-    ...(user.role !== "PATIENT"
-      ? [{ href: "/dashboard/medicos", label: t("nav.doctors"), icon: Stethoscope }]
-      : []),
+    { href: "/dashboard/medicos", label: t("nav.doctors"), icon: Stethoscope },
     { href: "/dashboard/laudos", label: t("nav.reports"), icon: FileText },
   ];
 

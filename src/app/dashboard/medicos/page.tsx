@@ -40,7 +40,6 @@ export default async function DoctorsPage({ searchParams }: { searchParams: Prom
   const t = await getTranslations("doctors");
   const tCommon = await getTranslations("common");
 
-  // buildDoctorWhereClause will throw ForbiddenError for PATIENT
   const doctorWhere = buildDoctorWhereClause(userContext);
 
   const doctors = await db.doctor.findMany({
