@@ -77,7 +77,7 @@ async function main() {
   });
 
   await prisma.doctor.upsert({
-    where: { crm: "CRM-SP-123456" },
+    where: { id: doctorId },
     update: {},
     create: {
       id: doctorId,

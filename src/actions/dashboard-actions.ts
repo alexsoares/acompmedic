@@ -222,7 +222,7 @@ export async function deleteDoctor(formData: FormData) {
 }
 
 export async function searchDoctorUsers(name: string) {
-  const appUser = await requireAuthenticatedAppUser();
+  await requireAuthenticatedAppUser(); // enforce auth without using the return value
 
   if (!name || name.trim().length < 2) {
     return [];

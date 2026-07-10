@@ -3,7 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { Eye, Pencil, Trash2 } from "lucide-react";
 
 import { createDoctor, deleteDoctor, searchRedirect, updateDoctor } from "@/actions/dashboard-actions";
-import { buttonClass, Field, inputClass, PageHeader, Panel, secondaryButtonClass } from "@/components/dashboard/ui";
+import { inputClass, PageHeader, Panel, secondaryButtonClass } from "@/components/dashboard/ui";
 import { DoctorForm } from "@/components/dashboard/doctor-form";
 import { db } from "@/server/db";
 import { requireAuthenticatedAppUserOrRedirect } from "@/server/security/auth";
