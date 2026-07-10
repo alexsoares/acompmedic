@@ -4,12 +4,20 @@ import { useState } from "react";
 import { createDoctorAsync } from "@/actions/dashboard-actions";
 import { buttonClass, inputClass, secondaryButtonClass } from "@/components/dashboard/ui";
 
-interface DoctorSelectFieldProps {
-  initialDoctors: Array<{ id: string; fullName: string; specialty: string }>;
-  loadingLabel: string;
+interface Doctor {
+  id: string;
+  fullName: string;
+  specialty: string;
 }
 
-export function DoctorSelectField({ initialDoctors, loadingLabel }: DoctorSelectFieldProps) {
+interface DoctorSelectFieldProps {
+  initialDoctors: Doctor[];
+  loadingLabel: string;
+  /** Called whenever the selected doctor changes (null = no selection) */
+  onDoctorChange?: (doctor: Doctor | null) => void;
+}
+
+export function DoctorSelectField({ initialDoctors, loadingLabel, onDoctorChange }: DoctorSelectFieldProps) {
   const [doctors, setDoctors] = useState(initialDoctors);
   const [selectedId, setSelectedId] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -18,6 +26,15 @@ export function DoctorSelectField({ initialDoctors, loadingLabel }: DoctorSelect
   const [specialty, setSpecialty] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const id = e.target.value;
+    setSelectedId(id);
+    if (onDoctorChange) {
+      const found = doctors.find((d) => d.id === id) ?? null;
+      onDoctorChange(found);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,8 +56,12 @@ export function DoctorSelectField({ initialDoctors, loadingLabel }: DoctorSelect
         specialty: trimmedSpecialty,
       });
 
-      setDoctors((prev) => [...prev, newDoctor].sort((a, b) => a.fullName.localeCompare(b.fullName)));
+      const sorted = [...doctors, newDoctor].sort((a, b) => a.fullName.localeCompare(b.fullName));
+      setDoctors(sorted);
       setSelectedId(newDoctor.id);
+      if (onDoctorChange) {
+        onDoctorChange(newDoctor);
+      }
       setIsOpen(false);
       setFullName("");
       setCrm("");
@@ -59,7 +80,7 @@ export function DoctorSelectField({ initialDoctors, loadingLabel }: DoctorSelect
           name="doctorId"
           required
           value={selectedId}
-          onChange={(e) => setSelectedId(e.target.value)}
+          onChange={handleSelectChange}
           className={`${inputClass} flex-1`}
         >
           <option value="">{loadingLabel}</option>
@@ -82,14 +103,14 @@ export function DoctorSelectField({ initialDoctors, loadingLabel }: DoctorSelect
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
           <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-xl animate-in zoom-in-95 duration-200">
             <h3 className="text-lg font-semibold text-slate-900 mb-4">Cadastrar Novo Médico</h3>
-            
+
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
                 <div className="rounded bg-rose-50 p-2 text-xs font-medium text-rose-800">
                   {error}
                 </div>
               )}
-              
+
               <div>
                 <label className="block text-xs font-semibold text-slate-500 mb-1">
                   Nome Completo

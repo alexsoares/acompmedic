@@ -142,12 +142,6 @@ export default async function ReportsPage({
   ]);
 
   const isReadOnly = appUser.role === "PATIENT";
-  const availableDoctors = patientContext
-    ? [
-        ...(patientContext.assignedDoctor ? [patientContext.assignedDoctor] : []),
-        ...patientContext.appointments.map((appointment) => appointment.doctor),
-      ].filter((doctor, index, allDoctors) => allDoctors.findIndex((current) => current.id === doctor.id) === index)
-    : [];
   const patientUploadReturnPath = q ? `/dashboard/laudos?q=${encodeURIComponent(q)}` : "/dashboard/laudos";
   const viewedReport = viewId ? reports.find((r) => r.id === viewId) ?? null : null;
 
