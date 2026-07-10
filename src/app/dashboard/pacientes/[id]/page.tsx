@@ -4,6 +4,7 @@ import { CalendarDays, FileText, ArrowLeft, Phone, Mail, MapPin, User } from "lu
 
 import { createPatientMedicalReport } from "@/actions/dashboard-actions";
 import { buttonClass, Field, inputClass, Panel, secondaryButtonClass, textareaClass } from "@/components/dashboard/ui";
+import { DoctorSelectField } from "@/components/dashboard/doctor-select-field";
 import { db } from "@/server/db";
 import { requireAuthenticatedAppUserOrRedirect } from "@/server/security/auth";
 import { buildPatientWhereClause, resolveLinkedIds, ForbiddenError } from "@/server/security/authorize";
@@ -180,7 +181,7 @@ export default async function PatientDetailPage({
                 <FileText className="h-5 w-5 text-teal-700" />
                 Anexar novo laudo/exame
               </h2>
-              {availableDoctors.length > 0 ? (
+              {(
                 <form action={createPatientMedicalReport} className="grid gap-3">
                   <input type="hidden" name="patientId" value={patient.id} />
                   <input type="hidden" name="returnPath" value={`/dashboard/pacientes/${patient.id}`} />
@@ -189,14 +190,14 @@ export default async function PatientDetailPage({
                   </Field>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <Field label="Médico responsável">
-                      <select name="doctorId" required className={inputClass}>
-                        <option value="">Selecione</option>
-                        {availableDoctors.map((doctor) => (
-                          <option key={doctor.id} value={doctor.id}>
-                            {doctor.fullName} ({doctor.specialty})
-                          </option>
-                        ))}
-                      </select>
+                      <DoctorSelectField
+                        initialDoctors={availableDoctors.map((d) => ({
+                          id: d.id,
+                          fullName: d.fullName,
+                          specialty: d.specialty,
+                        }))}
+                        loadingLabel="Selecione"
+                      />
                     </Field>
                     <Field label="Especialidade">
                       <input name="specialty" required className={inputClass} />
@@ -221,10 +222,6 @@ export default async function PatientDetailPage({
                   </Field>
                   <button className={buttonClass}>Enviar laudo</button>
                 </form>
-              ) : (
-                <p className="text-sm text-slate-500">
-                  Nenhum médico vinculado foi encontrado para associar este envio. Solicite a vinculação na clínica.
-                </p>
               )}
             </Panel>
           )}
@@ -289,12 +286,12 @@ export default async function PatientDetailPage({
                       <div className="flex gap-2">
                         {attachment && (
                           <>
-                            <Link href={`/api/reports/${report.id}/view`} className={secondaryButtonClass}>
+                            <a href={`/api/reports/${report.id}/view`} target="_blank" rel="noreferrer" className={secondaryButtonClass}>
                               Visualizar
-                            </Link>
-                            <Link href={`/api/reports/${report.id}/download`} className={secondaryButtonClass}>
+                            </a>
+                            <a href={`/api/reports/${report.id}/download`} className={secondaryButtonClass}>
                               Baixar
-                            </Link>
+                            </a>
                           </>
                         )}
                       </div>
