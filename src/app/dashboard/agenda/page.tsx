@@ -5,12 +5,12 @@ import { Eye, Pencil, Trash2 } from "lucide-react";
 
 import {
   cancelAppointment,
-  createAppointment,
   searchRedirect,
   updateAppointment,
 } from "@/actions/dashboard-actions";
 import { buttonClass, Field, inputClass, PageHeader, Panel, secondaryButtonClass, textareaClass } from "@/components/dashboard/ui";
 import { DoctorSelectField } from "@/components/dashboard/doctor-select-field";
+import { AppointmentCreateForm } from "@/components/dashboard/appointment-create-form";
 import { db } from "@/server/db";
 import { requireAuthenticatedAppUserOrRedirect } from "@/server/security/auth";
 import {
@@ -115,49 +115,21 @@ export default async function AgendaPage({
         {!isReadOnly && (
           <Panel>
             <h2 className="mb-4 text-base font-semibold">{t("form.newAppointment")}</h2>
-            <form action={createAppointment} className="grid gap-3">
-              <Field label={t("form.patient")}>
-                <select name="patientId" required className={inputClass}>
-                  <option value="">{tCommon("actions.loading")}</option>
-                  {patients.map((patient) => (
-                    <option key={patient.id} value={patient.id}>
-                      {patient.fullName}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label={t("form.doctor")}>
-                <DoctorSelectField
-                  initialDoctors={doctors.map((d) => ({
-                    id: d.id,
-                    fullName: d.fullName,
-                    specialty: d.specialty,
-                  }))}
-                  loadingLabel={tCommon("actions.loading")}
-                />
-              </Field>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field label={t("form.startsAt")}>
-                  <input name="startsAt" type="datetime-local" required className={inputClass} />
-                </Field>
-                <Field label={t("form.duration")}>
-                  <input name="durationMinutes" type="number" min="10" step="5" defaultValue="30" className={inputClass} />
-                </Field>
-              </div>
-              <Field label={t("form.status")}>
-                <select name="status" defaultValue={AppointmentStatus.SCHEDULED} className={inputClass}>
-                  {Object.values(AppointmentStatus).map((status) => (
-                    <option key={status} value={status}>
-                      {tCommon(`appointmentStatus.${status}`)}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label={t("form.notes")}>
-                <textarea name="notes" className={textareaClass} />
-              </Field>
-              <button className={buttonClass}>{t("form.save")}</button>
-            </form>
+            <AppointmentCreateForm
+              patients={patients.map((p) => ({ id: p.id, fullName: p.fullName }))}
+              doctors={doctors.map((d) => ({ id: d.id, fullName: d.fullName, specialty: d.specialty }))}
+              patientLabel={t("form.patient")}
+              doctorLabel={t("form.doctor")}
+              startsAtLabel={t("form.startsAt")}
+              durationLabel={t("form.duration")}
+              statusLabel={t("form.status")}
+              notesLabel={t("form.notes")}
+              saveLabel={t("form.save")}
+              loadingLabel={tCommon("actions.loading")}
+              statusOptions={Object.fromEntries(
+                Object.values(AppointmentStatus).map((s) => [s, tCommon(`appointmentStatus.${s}`)])
+              )}
+            />
           </Panel>
         )}
 

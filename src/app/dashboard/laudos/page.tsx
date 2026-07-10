@@ -4,13 +4,12 @@ import { Eye, Download, Trash2 } from "lucide-react";
 
 import {
   authorizeMedicalReportViewer,
-  createMedicalReport,
   deleteMedicalReport,
   revokeMedicalReportViewer,
   searchRedirect,
 } from "@/actions/dashboard-actions";
-import { buttonClass, Field, inputClass, PageHeader, Panel, secondaryButtonClass, textareaClass } from "@/components/dashboard/ui";
-import { DoctorSelectField } from "@/components/dashboard/doctor-select-field";
+import { inputClass, PageHeader, Panel, secondaryButtonClass } from "@/components/dashboard/ui";
+import { AdminReportForm } from "@/components/dashboard/admin-report-form";
 import { PatientReportForm } from "@/components/dashboard/patient-report-form";
 import { formatBytes } from "@/lib/utils";
 import { db } from "@/server/db";
@@ -165,62 +164,28 @@ export default async function ReportsPage({
         {!isReadOnly && (
           <Panel>
             <h2 className="mb-4 text-base font-semibold">{t("form.newReport")}</h2>
-            <form action={createMedicalReport} className="grid gap-3">
-              <Field label={t("form.title")}>
-                <input name="title" required className={inputClass} />
-              </Field>
-              <Field label={t("form.patient")}>
-                <select name="patientId" required className={inputClass}>
-                  <option value="">{tCommon("actions.loading")}</option>
-                  {patients.map((patient) => (
-                    <option key={patient.id} value={patient.id}>
-                      {patient.fullName}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label={t("form.doctor")}>
-                <DoctorSelectField
-                  initialDoctors={doctors.map((d) => ({
-                    id: d.id,
-                    fullName: d.fullName,
-                    specialty: d.specialty,
-                  }))}
-                  loadingLabel={tCommon("actions.loading")}
-                />
-              </Field>
-              <Field label={t("form.appointment")}>
-                <select name="appointmentId" className={inputClass}>
-                  <option value="">{tCommon("empty.noResults") ? "Sem consulta" : ""}</option>
-                  {appointments.map((appointment) => (
-                    <option key={appointment.id} value={appointment.id}>
-                      {appointment.patient.fullName} - {appointment.doctor.fullName}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field label={t("form.specialty")}>
-                  <input name="specialty" required className={inputClass} />
-                </Field>
-                <Field label={t("form.reportDate")}>
-                  <input name="reportDate" type="date" className={inputClass} />
-                </Field>
-              </div>
-              <Field label={t("form.file")}>
-                <input
-                  name="file"
-                  type="file"
-                  required
-                  accept=".pdf,.txt,application/pdf,text/plain"
-                  className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
-                />
-              </Field>
-              <Field label={t("form.observations")}>
-                <textarea name="observations" className={textareaClass} />
-              </Field>
-              <button className={buttonClass}>{t("form.save")}</button>
-            </form>
+            <AdminReportForm
+              patients={patients.map((p) => ({ id: p.id, fullName: p.fullName }))}
+              doctors={doctors.map((d) => ({ id: d.id, fullName: d.fullName, specialty: d.specialty }))}
+              appointments={appointments.map((a) => ({
+                id: a.id,
+                patientFullName: a.patient.fullName,
+                doctorFullName: a.doctor.fullName,
+              }))}
+              labels={{
+                title: t("form.title"),
+                patient: t("form.patient"),
+                doctor: t("form.doctor"),
+                appointment: t("form.appointment"),
+                specialty: t("form.specialty"),
+                reportDate: t("form.reportDate"),
+                file: t("form.file"),
+                observations: t("form.observations"),
+                save: t("form.save"),
+                loading: tCommon("actions.loading"),
+                noAppointment: "Sem consulta",
+              }}
+            />
           </Panel>
         )}
 
