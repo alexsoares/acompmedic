@@ -270,10 +270,6 @@ export async function searchDoctorUsers(name: string) {
 export async function createAppointment(formData: FormData) {
   const appUser = await requireAuthenticatedAppUser();
 
-  if (appUser.role === "PATIENT") {
-    throw new ForbiddenError("Pacientes não podem criar consultas.");
-  }
-
   const startsAt = parseLocalDateTime(value(formData, "startsAt"));
   const durationMinutes = Number(value(formData, "durationMinutes") || "30");
   const endsAt = new Date(startsAt.getTime() + durationMinutes * 60_000);
@@ -304,10 +300,6 @@ export async function updateAppointment(formData: FormData) {
   const appUser = await requireAuthenticatedAppUser();
   const id = value(formData, "id");
 
-  if (appUser.role === "PATIENT") {
-    throw new ForbiddenError("Pacientes não podem modificar consultas.");
-  }
-
   await assertOwnedAppointment(id, appUser);
 
   const startsAt = parseLocalDateTime(value(formData, "startsAt"));
@@ -331,10 +323,6 @@ export async function updateAppointment(formData: FormData) {
 export async function cancelAppointment(formData: FormData) {
   const appUser = await requireAuthenticatedAppUser();
   const id = value(formData, "id");
-
-  if (appUser.role === "PATIENT") {
-    throw new ForbiddenError("Pacientes não podem cancelar consultas.");
-  }
 
   await assertOwnedAppointment(id, appUser);
 
@@ -675,7 +663,11 @@ async function assertOwnedDoctor(doctorId: string, appUser: { id: string; role: 
     where: {
       id: doctorId,
       deletedAt: null,
-      ...(appUser.role === "ADMIN" ? {} : { userId: appUser.id }),
+      ...(appUser.role === "ADMIN"
+        ? {}
+        : appUser.role === "PATIENT"
+        ? { createdByUserId: appUser.id }
+        : { userId: appUser.id }),
     },
     select: { id: true },
   });
@@ -683,6 +675,37 @@ async function assertOwnedDoctor(doctorId: string, appUser: { id: string; role: 
   if (!docRecord) {
     throw new ForbiddenError("Médico não encontrado ou sem permissão de acesso.");
   }
+}
+
+export async function createDoctorAsync(data: {
+  fullName: string;
+  crm: string;
+  specialty: string;
+}) {
+  const appUser = await requireAuthenticatedAppUser();
+
+  if (appUser.role !== "ADMIN" && appUser.role !== "PATIENT") {
+    throw new ForbiddenError("Apenas administradores e pacientes podem gerenciar/criar médicos.");
+  }
+
+  const doctor = await db.doctor.create({
+    data: {
+      createdByUserId: appUser.id,
+      userId: null,
+      fullName: data.fullName,
+      crm: data.crm,
+      specialty: data.specialty,
+    },
+  });
+
+  revalidatePath("/dashboard/medicos");
+  revalidatePath("/dashboard/agenda");
+
+  return {
+    id: doctor.id,
+    fullName: doctor.fullName,
+    specialty: doctor.specialty,
+  };
 }
 
 async function assertOwnedAppointment(appointmentId: string, appUser: { id: string; role: string }) {

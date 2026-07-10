@@ -8,6 +8,7 @@ import {
   updateAppointment,
 } from "@/actions/dashboard-actions";
 import { buttonClass, Field, inputClass, PageHeader, Panel, secondaryButtonClass, textareaClass } from "@/components/dashboard/ui";
+import { DoctorSelectField } from "@/components/dashboard/doctor-select-field";
 import { db } from "@/server/db";
 import { requireAuthenticatedAppUserOrRedirect } from "@/server/security/auth";
 import {
@@ -52,27 +53,23 @@ export default async function AgendaPage({
       orderBy: { startsAt: "asc" },
       take: 80,
     }),
-    appUser.role !== "PATIENT"
-      ? db.patient.findMany({
-          where: {
-            deletedAt: null,
-            ...buildPatientWhereClause(userContext),
-          },
-          orderBy: { fullName: "asc" },
-        })
-      : [],
-    appUser.role !== "PATIENT"
-      ? db.doctor.findMany({
-          where: {
-            deletedAt: null,
-            ...buildDoctorWhereClause(userContext),
-          },
-          orderBy: { fullName: "asc" },
-        })
-      : [],
+    db.patient.findMany({
+      where: {
+        deletedAt: null,
+        ...buildPatientWhereClause(userContext),
+      },
+      orderBy: { fullName: "asc" },
+    }),
+    db.doctor.findMany({
+      where: {
+        deletedAt: null,
+        ...buildDoctorWhereClause(userContext),
+      },
+      orderBy: { fullName: "asc" },
+    }),
   ]);
 
-  const isReadOnly = appUser.role === "PATIENT";
+  const isReadOnly = false;
 
   return (
     <>
@@ -94,14 +91,14 @@ export default async function AgendaPage({
                 </select>
               </Field>
               <Field label={t("form.doctor")}>
-                <select name="doctorId" required className={inputClass}>
-                  <option value="">{tCommon("actions.loading")}</option>
-                  {doctors.map((doctor) => (
-                    <option key={doctor.id} value={doctor.id}>
-                      {doctor.fullName} - {doctor.specialty}
-                    </option>
-                  ))}
-                </select>
+                <DoctorSelectField
+                  initialDoctors={doctors.map((d) => ({
+                    id: d.id,
+                    fullName: d.fullName,
+                    specialty: d.specialty,
+                  }))}
+                  loadingLabel={tCommon("actions.loading")}
+                />
               </Field>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field label={t("form.startsAt")}>

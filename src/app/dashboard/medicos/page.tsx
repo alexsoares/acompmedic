@@ -92,7 +92,7 @@ export default async function DoctorsPage({ searchParams }: { searchParams: Prom
           </Panel>
         )}
 
-        <Panel>
+        <Panel className="min-w-0">
           <form action={searchRedirect} className="mb-4 flex flex-col gap-2 sm:flex-row">
             <input type="hidden" name="path" value="/dashboard/medicos" />
             <input name="q" defaultValue={q} placeholder={t("form.searchPlaceholder")} className={`${inputClass} flex-1`} />
@@ -106,9 +106,9 @@ export default async function DoctorsPage({ searchParams }: { searchParams: Prom
                   <th className="px-4 py-3 text-left">{t("form.fullName")}</th>
                   <th className="px-4 py-3 text-left">{t("form.crm")}</th>
                   <th className="px-4 py-3 text-left">{t("form.specialty")}</th>
-                  <th className="px-4 py-3 text-left">{tCommon("nav.patients")}</th>
-                  <th className="px-4 py-3 text-left">{t("form.phone")}</th>
-                  <th className="px-4 py-3 text-left">{t("form.email")}</th>
+                  <th className="px-4 py-3 text-left hidden sm:table-cell">{tCommon("nav.patients")}</th>
+                  <th className="px-4 py-3 text-left hidden md:table-cell">{t("form.phone")}</th>
+                  <th className="px-4 py-3 text-left hidden lg:table-cell">{t("form.email")}</th>
                   <th className="px-4 py-3 text-right">Ações</th>
                 </tr>
               </thead>
@@ -118,9 +118,9 @@ export default async function DoctorsPage({ searchParams }: { searchParams: Prom
                     <td className="px-4 py-3 font-medium text-slate-900">{doctor.fullName}</td>
                     <td className="px-4 py-3">{doctor.crm}</td>
                     <td className="px-4 py-3">{doctor.specialty}</td>
-                    <td className="px-4 py-3">{doctor.assignedPatients.length}</td>
-                    <td className="px-4 py-3">{doctor.phone ?? "-"}</td>
-                    <td className="px-4 py-3">{doctor.email ?? "-"}</td>
+                    <td className="px-4 py-3 hidden sm:table-cell">{doctor.assignedPatients.length}</td>
+                    <td className="px-4 py-3 hidden md:table-cell">{doctor.phone ?? "-"}</td>
+                    <td className="px-4 py-3 hidden lg:table-cell">{doctor.email ?? "-"}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-2">
                         <Link

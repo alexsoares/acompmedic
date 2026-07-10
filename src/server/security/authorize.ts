@@ -58,7 +58,12 @@ export function buildDoctorWhereClause(user: AuthorizedUser & { doctorId?: strin
   }
 
   if (user.role === UserRole.PATIENT) {
-    return { createdByUserId: user.id };
+    return {
+      OR: [
+        { createdByUserId: user.id },
+        { assignedPatients: { some: { userId: user.id } } },
+      ],
+    };
   }
 
   throw new Error("Role inválida.");
