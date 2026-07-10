@@ -5,13 +5,13 @@ import { Eye, Download, Trash2 } from "lucide-react";
 import {
   authorizeMedicalReportViewer,
   createMedicalReport,
-  createPatientMedicalReport,
   deleteMedicalReport,
   revokeMedicalReportViewer,
   searchRedirect,
 } from "@/actions/dashboard-actions";
 import { buttonClass, Field, inputClass, PageHeader, Panel, secondaryButtonClass, textareaClass } from "@/components/dashboard/ui";
 import { DoctorSelectField } from "@/components/dashboard/doctor-select-field";
+import { PatientReportForm } from "@/components/dashboard/patient-report-form";
 import { formatBytes } from "@/lib/utils";
 import { db } from "@/server/db";
 import { requireAuthenticatedAppUserOrRedirect } from "@/server/security/auth";
@@ -230,51 +230,17 @@ export default async function ReportsPage({
           </Panel>
         )}
 
-        {isReadOnly && (
+        {isReadOnly && patientContext && (
           <Panel>
             <h2 className="mb-4 text-base font-semibold">Anexar novo laudo/exame</h2>
-            {patientContext && availableDoctors.length > 0 ? (
-              <form action={createPatientMedicalReport} className="grid gap-3">
-                <input type="hidden" name="patientId" value={patientContext.id} />
-                <input type="hidden" name="returnPath" value={patientUploadReturnPath} />
-                <Field label={t("form.title")}>
-                  <input name="title" required className={inputClass} />
-                </Field>
-                <Field label={t("form.doctor")}>
-                  <DoctorSelectField
-                    initialDoctors={availableDoctors.map((d) => ({
-                      id: d.id,
-                      fullName: d.fullName,
-                      specialty: d.specialty,
-                    }))}
-                    loadingLabel="Selecione"
-                  />
-                </Field>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label={t("form.specialty")}>
-                    <input name="specialty" required className={inputClass} />
-                  </Field>
-                  <Field label={t("form.reportDate")}>
-                    <input name="reportDate" type="date" className={inputClass} />
-                  </Field>
-                </div>
-                <Field label={t("form.file")}>
-                  <input
-                    name="file"
-                    type="file"
-                    required
-                    accept=".pdf,.txt,application/pdf,text/plain"
-                    className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
-                  />
-                </Field>
-                <Field label={t("form.observations")}>
-                  <textarea name="observations" className={textareaClass} />
-                </Field>
-                <button className={buttonClass}>Enviar laudo</button>
-              </form>
-            ) : (
-              <p className="text-sm text-slate-500">Nenhum médico vinculado foi encontrado para associar este envio.</p>
-            )}
+            <PatientReportForm
+              patientId={patientContext.id}
+              returnPath={patientUploadReturnPath}
+              availableDoctors={[
+                ...(patientContext.assignedDoctor ? [patientContext.assignedDoctor] : []),
+                ...patientContext.appointments.map((a) => a.doctor),
+              ].filter((d, i, arr) => arr.findIndex((x) => x.id === d.id) === i)}
+            />
           </Panel>
         )}
 

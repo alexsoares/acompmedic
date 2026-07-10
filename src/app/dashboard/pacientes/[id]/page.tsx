@@ -2,9 +2,8 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { CalendarDays, FileText, ArrowLeft, Phone, Mail, MapPin, User } from "lucide-react";
 
-import { createPatientMedicalReport } from "@/actions/dashboard-actions";
-import { buttonClass, Field, inputClass, Panel, secondaryButtonClass, textareaClass } from "@/components/dashboard/ui";
-import { DoctorSelectField } from "@/components/dashboard/doctor-select-field";
+import { Panel, secondaryButtonClass } from "@/components/dashboard/ui";
+import { PatientReportForm } from "@/components/dashboard/patient-report-form";
 import { db } from "@/server/db";
 import { requireAuthenticatedAppUserOrRedirect } from "@/server/security/auth";
 import { buildPatientWhereClause, resolveLinkedIds, ForbiddenError } from "@/server/security/authorize";
@@ -181,48 +180,11 @@ export default async function PatientDetailPage({
                 <FileText className="h-5 w-5 text-teal-700" />
                 Anexar novo laudo/exame
               </h2>
-              {(
-                <form action={createPatientMedicalReport} className="grid gap-3">
-                  <input type="hidden" name="patientId" value={patient.id} />
-                  <input type="hidden" name="returnPath" value={`/dashboard/pacientes/${patient.id}`} />
-                  <Field label="Título">
-                    <input name="title" required className={inputClass} />
-                  </Field>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <Field label="Médico responsável">
-                      <DoctorSelectField
-                        initialDoctors={availableDoctors.map((d) => ({
-                          id: d.id,
-                          fullName: d.fullName,
-                          specialty: d.specialty,
-                        }))}
-                        loadingLabel="Selecione"
-                      />
-                    </Field>
-                    <Field label="Especialidade">
-                      <input name="specialty" required className={inputClass} />
-                    </Field>
-                  </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <Field label="Data do laudo">
-                      <input name="reportDate" type="date" className={inputClass} />
-                    </Field>
-                    <Field label="Arquivo (PDF ou TXT)">
-                      <input
-                        name="file"
-                        type="file"
-                        required
-                        accept=".pdf,.txt,application/pdf,text/plain"
-                        className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
-                      />
-                    </Field>
-                  </div>
-                  <Field label="Observações">
-                    <textarea name="observations" className={textareaClass} />
-                  </Field>
-                  <button className={buttonClass}>Enviar laudo</button>
-                </form>
-              )}
+              <PatientReportForm
+                patientId={patient.id}
+                returnPath={`/dashboard/pacientes/${patient.id}`}
+                availableDoctors={availableDoctors}
+              />
             </Panel>
           )}
 

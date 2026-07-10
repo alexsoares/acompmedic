@@ -448,6 +448,8 @@ export async function createPatientMedicalReport(formData: FormData) {
               },
             },
           },
+          // Doctor created by the patient themselves via the async modal
+          { createdByUserId: appUser.id },
         ],
       },
       select: { id: true },
