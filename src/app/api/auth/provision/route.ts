@@ -14,8 +14,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const body = (await request.json().catch(() => ({}))) as { fullName?: string };
+  const body = (await request.json().catch(() => ({}))) as {
+    fullName?: string;
+    role?: string;
+    crm?: string;
+    specialty?: string;
+  };
   const fullName = body.fullName?.trim() || user.user_metadata.full_name || user.email;
+  const role = body.role || user.user_metadata.role || "PATIENT";
+  const crm = body.crm?.trim() || user.user_metadata.crm || `CRM-${Math.random().toString(36).substring(2, 11)}`;
+  const specialty = body.specialty?.trim() || user.user_metadata.specialty || "Clínica Geral";
 
   const appUser = await db.user.upsert({
     where: { authUserId: user.id },
@@ -26,19 +34,32 @@ export async function POST(request: NextRequest) {
     create: {
       authUserId: user.id,
       email: user.email,
-      role: "PATIENT",
+      role: role === "DOCTOR" ? "DOCTOR" : "PATIENT",
       lastLoginAt: new Date(),
       profile: {
         create: {
           fullName,
         },
       },
-      patientRecord: {
-        create: {
-          fullName,
-          email: user.email,
-        },
-      },
+      ...(role === "DOCTOR"
+        ? {
+            doctorRecord: {
+              create: {
+                fullName,
+                email: user.email,
+                crm,
+                specialty,
+              },
+            },
+          }
+        : {
+            patientRecord: {
+              create: {
+                fullName,
+                email: user.email,
+              },
+            },
+          }),
     },
   });
 

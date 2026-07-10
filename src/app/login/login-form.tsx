@@ -10,6 +10,7 @@ type Mode = "login" | "signup";
 export function LoginForm() {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("login");
+  const [role, setRole] = useState<"PATIENT" | "DOCTOR">("PATIENT");
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -24,6 +25,9 @@ export function LoginForm() {
     const email = String(formData.get("email") ?? "");
     const password = String(formData.get("password") ?? "");
     const fullName = String(formData.get("fullName") ?? "");
+    const selectedRole = String(formData.get("role") ?? "PATIENT");
+    const crm = String(formData.get("crm") ?? "");
+    const specialty = String(formData.get("specialty") ?? "");
 
     const supabase = createSupabaseBrowserClient();
 
@@ -34,7 +38,12 @@ export function LoginForm() {
             email,
             password,
             options: {
-              data: { full_name: fullName },
+              data: {
+                full_name: fullName,
+                role: selectedRole,
+                crm: selectedRole === "DOCTOR" ? crm : undefined,
+                specialty: selectedRole === "DOCTOR" ? specialty : undefined,
+              },
               emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
             },
           });
@@ -61,7 +70,12 @@ export function LoginForm() {
     const provisionResponse = await fetch("/api/auth/provision", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fullName }),
+      body: JSON.stringify({
+        fullName,
+        role: selectedRole,
+        crm: selectedRole === "DOCTOR" ? crm : undefined,
+        specialty: selectedRole === "DOCTOR" ? specialty : undefined,
+      }),
     });
 
     if (!provisionResponse.ok) {
@@ -77,14 +91,52 @@ export function LoginForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {mode === "signup" ? (
-        <label className="grid gap-2 text-sm font-medium text-slate-700">
-          Nome completo
-          <input
-            name="fullName"
-            required
-            className="h-11 rounded-md border border-slate-300 bg-white px-3 text-sm outline-none focus:border-teal-700"
-          />
-        </label>
+        <>
+          <label className="grid gap-2 text-sm font-medium text-slate-700">
+            Nome completo
+            <input
+              name="fullName"
+              required
+              className="h-11 rounded-md border border-slate-300 bg-white px-3 text-sm outline-none focus:border-teal-700"
+            />
+          </label>
+
+          <label className="grid gap-2 text-sm font-medium text-slate-700">
+            Tipo de conta
+            <select
+              name="role"
+              value={role}
+              onChange={(e) => setRole(e.target.value as "PATIENT" | "DOCTOR")}
+              className="h-11 rounded-md border border-slate-300 bg-white px-3 text-sm outline-none focus:border-teal-700"
+            >
+              <option value="PATIENT">Paciente</option>
+              <option value="DOCTOR">Médico</option>
+            </select>
+          </label>
+
+          {role === "DOCTOR" && (
+            <>
+              <label className="grid gap-2 text-sm font-medium text-slate-700">
+                CRM
+                <input
+                  name="crm"
+                  required
+                  placeholder="Ex: CRM/SP 123456"
+                  className="h-11 rounded-md border border-slate-300 bg-white px-3 text-sm outline-none focus:border-teal-700"
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-medium text-slate-700">
+                Especialidade
+                <input
+                  name="specialty"
+                  required
+                  placeholder="Ex: Cardiologia"
+                  className="h-11 rounded-md border border-slate-300 bg-white px-3 text-sm outline-none focus:border-teal-700"
+                />
+              </label>
+            </>
+          )}
+        </>
       ) : null}
 
       <label className="grid gap-2 text-sm font-medium text-slate-700">
