@@ -1,5 +1,5 @@
 import { env } from "@/lib/env";
-import { supabaseAdmin } from "@/server/supabase/admin";
+import { createSupabaseAdminClient } from "@/server/supabase/admin";
 
 export type SupabaseStorageUploadResult = {
   path: string;
@@ -25,5 +25,5 @@ export interface MedicalReportsStorageBucket {
 }
 
 export function createMedicalReportsStorageBucket(): MedicalReportsStorageBucket {
-  return supabaseAdmin.storage.from(env.SUPABASE_STORAGE_BUCKET_MEDICAL_REPORTS);
+  return createSupabaseAdminClient().storage.from(env.SUPABASE_STORAGE_BUCKET_MEDICAL_REPORTS);
 }
