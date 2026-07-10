@@ -57,8 +57,11 @@ export function buildDoctorWhereClause(user: AuthorizedUser & { doctorId?: strin
     return { id: user.doctorId };
   }
 
-  // PATIENT não acessa listagem de médicos — lançar 403 no caller
-  throw new ForbiddenError("Pacientes não têm acesso à listagem de médicos.");
+  if (user.role === UserRole.PATIENT) {
+    return { createdByUserId: user.id };
+  }
+
+  throw new Error("Role inválida.");
 }
 
 /** Cláusula WHERE para listagem de appointments, por role. */

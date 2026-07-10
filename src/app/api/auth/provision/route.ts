@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
       },
       ...(role === "DOCTOR"
         ? {
-            doctorRecord: {
+            doctorRecords: {
               create: {
                 fullName,
                 email: user.email,

@@ -62,7 +62,7 @@ model User {
   deletedAt           DateTime?
   profile             Profile?
   // Se este User tem role=DOCTOR, este é o vínculo com seu registro cadastral de Doctor
-  doctorRecord        Doctor?        @relation("DoctorAccount")
+  doctorRecords       Doctor[]       @relation("DoctorAccount")
   // Se este User tem role=PATIENT, este é o vínculo com seu registro cadastral de Patient
   patientRecord       Patient?       @relation("PatientAccount")
   createdPatients     Patient[]      @relation("PatientCreatedBy")
@@ -131,10 +131,10 @@ model Patient {
 model Doctor {
   id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   // Vínculo de conta: se este médico tem login, qual User é ele
-  userId          String?         @unique(map: "doctors_user_id_key") @db.Uuid
+  userId          String?         @db.Uuid
   createdByUserId String?         @db.Uuid
   fullName        String          @db.VarChar(150)
-  crm             String          @unique(map: "doctors_crm_key") @db.VarChar(30)
+  crm             String          @db.VarChar(30)
   specialty       String          @db.VarChar(100)
   phone           String?         @db.VarChar(20)
   email           String?         @db.VarChar(255)

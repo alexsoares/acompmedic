@@ -142,13 +142,16 @@ export async function deletePatient(formData: FormData) {
 export async function createDoctor(formData: FormData) {
   const appUser = await requireAuthenticatedAppUser();
 
-  if (appUser.role !== "ADMIN") {
-    throw new ForbiddenError("Apenas administradores podem gerenciar médicos.");
+  if (appUser.role !== "ADMIN" && appUser.role !== "PATIENT") {
+    throw new ForbiddenError("Apenas administradores e pacientes podem gerenciar/criar médicos.");
   }
+
+  const associatedUserId = nullableValue(formData, "associatedUserId");
 
   await db.doctor.create({
     data: {
       createdByUserId: appUser.id,
+      userId: associatedUserId || null,
       fullName: value(formData, "fullName"),
       crm: value(formData, "crm"),
       specialty: value(formData, "specialty"),
@@ -162,14 +165,26 @@ export async function createDoctor(formData: FormData) {
 
 export async function updateDoctor(formData: FormData) {
   const appUser = await requireAuthenticatedAppUser();
+  const doctorId = value(formData, "id");
 
   if (appUser.role !== "ADMIN") {
-    throw new ForbiddenError("Apenas administradores podem gerenciar médicos.");
+    if (appUser.role !== "PATIENT") {
+      throw new ForbiddenError("Apenas administradores e pacientes podem gerenciar médicos.");
+    }
+    const doctor = await db.doctor.findFirst({
+      where: { id: doctorId, createdByUserId: appUser.id, deletedAt: null },
+    });
+    if (!doctor) {
+      throw new ForbiddenError("Você não tem permissão para editar este médico.");
+    }
   }
 
+  const associatedUserId = nullableValue(formData, "associatedUserId");
+
   await db.doctor.update({
-    where: { id: value(formData, "id") },
+    where: { id: doctorId },
     data: {
+      userId: associatedUserId || null,
       fullName: value(formData, "fullName"),
       crm: value(formData, "crm"),
       specialty: value(formData, "specialty"),
@@ -184,17 +199,72 @@ export async function updateDoctor(formData: FormData) {
 
 export async function deleteDoctor(formData: FormData) {
   const appUser = await requireAuthenticatedAppUser();
+  const doctorId = value(formData, "id");
 
   if (appUser.role !== "ADMIN") {
-    throw new ForbiddenError("Apenas administradores podem gerenciar médicos.");
+    if (appUser.role !== "PATIENT") {
+      throw new ForbiddenError("Apenas administradores e pacientes podem gerenciar médicos.");
+    }
+    const doctor = await db.doctor.findFirst({
+      where: { id: doctorId, createdByUserId: appUser.id, deletedAt: null },
+    });
+    if (!doctor) {
+      throw new ForbiddenError("Você não tem permissão para remover este médico.");
+    }
   }
 
   await db.doctor.update({
-    where: { id: value(formData, "id") },
+    where: { id: doctorId },
     data: { deletedAt: new Date() },
   });
 
   revalidatePath("/dashboard/medicos");
+}
+
+export async function searchDoctorUsers(name: string) {
+  const appUser = await requireAuthenticatedAppUser();
+
+  if (!name || name.trim().length < 2) {
+    return [];
+  }
+
+  const users = await db.user.findMany({
+    where: {
+      role: "DOCTOR",
+      deletedAt: null,
+      profile: {
+        fullName: {
+          contains: name.trim(),
+          mode: "insensitive",
+        },
+      },
+    },
+    select: {
+      id: true,
+      email: true,
+      profile: {
+        select: {
+          fullName: true,
+        },
+      },
+      doctorRecords: {
+        where: { deletedAt: null },
+        select: {
+          crm: true,
+          specialty: true,
+        },
+      },
+    },
+    take: 10,
+  });
+
+  return users.map((u) => ({
+    id: u.id,
+    email: u.email,
+    fullName: u.profile?.fullName || u.email,
+    crm: u.doctorRecords?.[0]?.crm || "",
+    specialty: u.doctorRecords?.[0]?.specialty || "",
+  }));
 }
 
 export async function createAppointment(formData: FormData) {

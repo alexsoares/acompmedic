@@ -4,6 +4,7 @@ import { Eye, Pencil, Trash2 } from "lucide-react";
 
 import { createDoctor, deleteDoctor, searchRedirect, updateDoctor } from "@/actions/dashboard-actions";
 import { buttonClass, Field, inputClass, PageHeader, Panel, secondaryButtonClass } from "@/components/dashboard/ui";
+import { DoctorForm } from "@/components/dashboard/doctor-form";
 import { db } from "@/server/db";
 import { requireAuthenticatedAppUserOrRedirect } from "@/server/security/auth";
 import { buildDoctorWhereClause, resolveLinkedIds } from "@/server/security/authorize";
@@ -64,36 +65,31 @@ export default async function DoctorsPage({ searchParams }: { searchParams: Prom
     orderBy: { fullName: "asc" },
   });
 
-  const isAdmin = appUser.role === "ADMIN";
-  const selectedDoctor = isAdmin && editId ? doctors.find((doctor) => doctor.id === editId) ?? null : null;
+  const canManage = appUser.role === "ADMIN" || appUser.role === "PATIENT";
+  const selectedDoctor = canManage && editId ? doctors.find((doctor) => doctor.id === editId) ?? null : null;
   const viewedDoctor = viewId ? doctors.find((doctor) => doctor.id === viewId) ?? null : null;
 
   return (
     <>
       <PageHeader title={t("title")} description={t("description")} />
 
-      <div className={`grid gap-6 ${isAdmin ? "xl:grid-cols-[380px_1fr]" : "grid-cols-1"}`}>
-        {isAdmin && (
+      <div className={`grid gap-6 ${canManage ? "xl:grid-cols-[380px_1fr]" : "grid-cols-1"}`}>
+        {canManage && (
           <Panel>
             <h2 className="mb-4 text-base font-semibold">{t("form.newDoctor")}</h2>
-            <form action={createDoctor} className="grid gap-3">
-              <Field label={t("form.fullName")}>
-                <input name="fullName" required className={inputClass} />
-              </Field>
-              <Field label={t("form.crm")}>
-                <input name="crm" required className={inputClass} />
-              </Field>
-              <Field label={t("form.specialty")}>
-                <input name="specialty" required className={inputClass} />
-              </Field>
-              <Field label={t("form.phone")}>
-                <input name="phone" className={inputClass} />
-              </Field>
-              <Field label={t("form.email")}>
-                <input name="email" type="email" className={inputClass} />
-              </Field>
-              <button className={buttonClass}>{t("form.save")}</button>
-            </form>
+            <DoctorForm
+              action={createDoctor}
+              submitLabel={t("form.save")}
+              isPatient={appUser.role === "PATIENT"}
+              labels={{
+                fullName: t("form.fullName"),
+                crm: t("form.crm"),
+                specialty: t("form.specialty"),
+                phone: t("form.phone"),
+                email: t("form.email"),
+                cancel: tCommon("actions.cancel"),
+              }}
+            />
           </Panel>
         )}
 
@@ -136,7 +132,7 @@ export default async function DoctorsPage({ searchParams }: { searchParams: Prom
                         >
                           <Eye className="h-4 w-4" />
                         </Link>
-                        {isAdmin && (
+                        {canManage && (
                           <Link
                             href={buildDoctorsHref({ q, editId: doctor.id })}
                             title={tCommon("actions.edit")}
@@ -146,7 +142,7 @@ export default async function DoctorsPage({ searchParams }: { searchParams: Prom
                             <Pencil className="h-4 w-4" />
                           </Link>
                         )}
-                        {isAdmin && (
+                        {canManage && (
                           <form action={deleteDoctor}>
                             <input type="hidden" name="id" value={doctor.id} />
                             <button
@@ -169,33 +165,32 @@ export default async function DoctorsPage({ searchParams }: { searchParams: Prom
           {doctors.length === 0 ? <p className="py-8 text-sm text-slate-500">{t("empty")}</p> : null}
 
           {selectedDoctor && (
-            <form action={updateDoctor} className="mt-6 rounded-md border border-slate-200 p-4">
-              <input type="hidden" name="id" value={selectedDoctor.id} />
+            <div className="mt-6 rounded-md border border-slate-200 p-4 bg-white">
               <h3 className="mb-4 text-base font-semibold text-slate-900">{tCommon("actions.edit")}</h3>
-              <div className="grid gap-3 lg:grid-cols-2">
-                <Field label={t("form.fullName")}>
-                  <input name="fullName" defaultValue={selectedDoctor.fullName} className={inputClass} />
-                </Field>
-                <Field label={t("form.crm")}>
-                  <input name="crm" defaultValue={selectedDoctor.crm} className={inputClass} />
-                </Field>
-                <Field label={t("form.specialty")}>
-                  <input name="specialty" defaultValue={selectedDoctor.specialty} className={inputClass} />
-                </Field>
-                <Field label={t("form.phone")}>
-                  <input name="phone" defaultValue={selectedDoctor.phone ?? ""} className={inputClass} />
-                </Field>
-                <Field label={t("form.email")}>
-                  <input name="email" type="email" defaultValue={selectedDoctor.email ?? ""} className={inputClass} />
-                </Field>
-              </div>
-              <div className="mt-4 flex items-center justify-end gap-2">
-                <Link href={buildDoctorsHref({ q })} className={secondaryButtonClass}>
-                  {tCommon("actions.cancel")}
-                </Link>
-                <button className={buttonClass}>{tCommon("actions.save")}</button>
-              </div>
-            </form>
+              <DoctorForm
+                action={updateDoctor}
+                submitLabel={tCommon("actions.save")}
+                cancelHref={buildDoctorsHref({ q })}
+                initialValues={{
+                  id: selectedDoctor.id,
+                  fullName: selectedDoctor.fullName,
+                  crm: selectedDoctor.crm,
+                  specialty: selectedDoctor.specialty,
+                  phone: selectedDoctor.phone ?? undefined,
+                  email: selectedDoctor.email ?? undefined,
+                  userId: selectedDoctor.userId,
+                }}
+                isPatient={appUser.role === "PATIENT"}
+                labels={{
+                  fullName: t("form.fullName"),
+                  crm: t("form.crm"),
+                  specialty: t("form.specialty"),
+                  phone: t("form.phone"),
+                  email: t("form.email"),
+                  cancel: tCommon("actions.cancel"),
+                }}
+              />
+            </div>
           )}
 
           {viewedDoctor && !selectedDoctor && (
