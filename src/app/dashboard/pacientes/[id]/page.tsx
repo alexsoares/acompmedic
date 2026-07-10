@@ -2,7 +2,8 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { CalendarDays, FileText, ArrowLeft, Phone, Mail, MapPin, User } from "lucide-react";
 
-import { Panel, secondaryButtonClass } from "@/components/dashboard/ui";
+import { createPatientMedicalReport } from "@/actions/dashboard-actions";
+import { buttonClass, Field, inputClass, Panel, secondaryButtonClass, textareaClass } from "@/components/dashboard/ui";
 import { db } from "@/server/db";
 import { requireAuthenticatedAppUserOrRedirect } from "@/server/security/auth";
 import { buildPatientWhereClause, resolveLinkedIds, ForbiddenError } from "@/server/security/authorize";
@@ -19,8 +20,15 @@ function calculateAge(birthDate: Date | null): number | null {
   return age;
 }
 
-export default async function PatientDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function PatientDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ uploadStatus?: string; uploadMessage?: string }>;
+}) {
   const { id } = await params;
+  const query = await searchParams;
   const appUser = await requireAuthenticatedAppUserOrRedirect();
   const { doctorId, patientId } = await resolveLinkedIds(appUser.id);
   const userContext = { id: appUser.id, role: appUser.role, email: appUser.email, doctorId, patientId };
@@ -28,6 +36,8 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
   const t = await getTranslations("patients");
   const tCommon = await getTranslations("common");
   const locale = appUser.locale || "pt-BR";
+  const uploadStatus = query.uploadStatus === "success" || query.uploadStatus === "error" ? query.uploadStatus : null;
+  const uploadMessage = query.uploadMessage?.trim() || null;
 
   const patient = await db.patient.findFirst({
     where: {
@@ -62,6 +72,10 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
   }
 
   const age = calculateAge(patient.birthDate);
+  const availableDoctors = [
+    ...(patient.assignedDoctor ? [patient.assignedDoctor] : []),
+    ...patient.appointments.map((appointment) => appointment.doctor),
+  ].filter((doctor, index, doctors) => doctors.findIndex((current) => current.id === doctor.id) === index);
 
   return (
     <>
@@ -148,6 +162,73 @@ export default async function PatientDetailPage({ params }: { params: Promise<{ 
 
         {/* Consultas e Laudos */}
         <div className="space-y-6 lg:col-span-2">
+          {uploadStatus && uploadMessage && appUser.role === "PATIENT" && (
+            <div
+              className={`rounded-md border px-4 py-3 text-sm ${
+                uploadStatus === "success"
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                  : "border-rose-200 bg-rose-50 text-rose-700"
+              }`}
+            >
+              {uploadMessage}
+            </div>
+          )}
+
+          {appUser.role === "PATIENT" && (
+            <Panel>
+              <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-slate-900">
+                <FileText className="h-5 w-5 text-teal-700" />
+                Anexar novo laudo/exame
+              </h2>
+              {availableDoctors.length > 0 ? (
+                <form action={createPatientMedicalReport} className="grid gap-3">
+                  <input type="hidden" name="patientId" value={patient.id} />
+                  <input type="hidden" name="returnPath" value={`/dashboard/pacientes/${patient.id}`} />
+                  <Field label="Título">
+                    <input name="title" required className={inputClass} />
+                  </Field>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Field label="Médico responsável">
+                      <select name="doctorId" required className={inputClass}>
+                        <option value="">Selecione</option>
+                        {availableDoctors.map((doctor) => (
+                          <option key={doctor.id} value={doctor.id}>
+                            {doctor.fullName} ({doctor.specialty})
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="Especialidade">
+                      <input name="specialty" required className={inputClass} />
+                    </Field>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Field label="Data do laudo">
+                      <input name="reportDate" type="date" className={inputClass} />
+                    </Field>
+                    <Field label="Arquivo (PDF ou TXT)">
+                      <input
+                        name="file"
+                        type="file"
+                        required
+                        accept=".pdf,.txt,application/pdf,text/plain"
+                        className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+                      />
+                    </Field>
+                  </div>
+                  <Field label="Observações">
+                    <textarea name="observations" className={textareaClass} />
+                  </Field>
+                  <button className={buttonClass}>Enviar laudo</button>
+                </form>
+              ) : (
+                <p className="text-sm text-slate-500">
+                  Nenhum médico vinculado foi encontrado para associar este envio. Solicite a vinculação na clínica.
+                </p>
+              )}
+            </Panel>
+          )}
+
           {/* Histórico de Consultas */}
           <Panel>
             <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-slate-900">

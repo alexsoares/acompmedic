@@ -5,6 +5,7 @@ import { MedicalReportStorageService } from "@/features/medical-reports/services
 import { env } from "@/lib/env";
 import { db } from "@/server/db";
 import { jsonError, withProtectedRoute } from "@/server/http";
+import { buildMedicalReportWhereClause, resolveLinkedIds } from "@/server/security/authorize";
 import { createMedicalReportsStorageBucket } from "@/server/supabase/storage";
 
 const repository = new PrismaMedicalReportRepository();
@@ -30,8 +31,14 @@ export async function GET(
       }
 
       const { id } = await params;
+      const { doctorId, patientId } = await resolveLinkedIds(appUser.id);
+      const userContext = { id: appUser.id, role: appUser.role, email: appUser.email, doctorId, patientId };
       const report = await db.medicalReport.findFirst({
-        where: { id, createdByUserId: appUser.id, deletedAt: null },
+        where: {
+          id,
+          deletedAt: null,
+          ...buildMedicalReportWhereClause(userContext),
+        },
         select: { id: true },
       });
 

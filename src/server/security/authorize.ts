@@ -89,7 +89,20 @@ export function buildMedicalReportWhereClause(
   }
 
   if (user.role === UserRole.DOCTOR) {
-    return { doctorId: user.doctorId ?? EMPTY_UUID };
+    const currentDoctorId = user.doctorId ?? EMPTY_UUID;
+    return {
+      OR: [
+        { doctorId: currentDoctorId },
+        {
+          accessGrants: {
+            some: {
+              doctorId: currentDoctorId,
+              deletedAt: null,
+            },
+          },
+        },
+      ],
+    };
   }
 
   if (user.role === UserRole.PATIENT) {

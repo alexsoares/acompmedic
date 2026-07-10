@@ -5,6 +5,7 @@ import { MedicalReportStorageService } from "@/features/medical-reports/services
 import { env } from "@/lib/env";
 import { db } from "@/server/db";
 import { jsonError, withProtectedRoute } from "@/server/http";
+import { resolveLinkedIds } from "@/server/security/authorize";
 import { createMedicalReportsStorageBucket } from "@/server/supabase/storage";
 
 const storageService = new MedicalReportStorageService(
@@ -36,8 +37,18 @@ export async function POST(
       }
 
       const { id } = await params;
+      const { doctorId } = await resolveLinkedIds(appUser.id);
+
+      if (appUser.role === "PATIENT") {
+        return jsonError("Patients cannot replace report files.", 403);
+      }
+
       const report = await db.medicalReport.findFirst({
-        where: { id, createdByUserId: appUser.id, deletedAt: null },
+        where: {
+          id,
+          deletedAt: null,
+          ...(appUser.role === "ADMIN" ? {} : { doctorId: doctorId ?? "00000000-0000-0000-0000-000000000000" }),
+        },
         select: { id: true },
       });
 

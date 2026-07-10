@@ -117,6 +117,7 @@ model Patient {
   assignedDoctor   Doctor?         @relation("PatientAssignedDoctor", fields: [assignedDoctorId], references: [id], onDelete: SetNull)
   appointments     Appointment[]
   medicalReports   MedicalReport[]
+  grantedReportAccesses MedicalReportAccessGrant[] @relation("MedicalReportAccessGrantedByPatient")
 
   @@index([createdByUserId], map: "patients_created_by_user_id_idx")
   @@index([assignedDoctorId], map: "patients_assigned_doctor_id_idx")
@@ -144,6 +145,7 @@ model Doctor {
   createdBy       User?           @relation("DoctorCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
   appointments    Appointment[]
   medicalReports  MedicalReport[]
+  reportAccessGrants MedicalReportAccessGrant[] @relation("MedicalReportAccessDoctor")
   assignedPatients Patient[]      @relation("PatientAssignedDoctor")
 
   @@index([createdByUserId], map: "doctors_created_by_user_id_idx")
@@ -196,6 +198,7 @@ model MedicalReport {
   updatedAt         DateTime      @updatedAt
   deletedAt         DateTime?
   attachments       Attachment[]
+  accessGrants      MedicalReportAccessGrant[]
   appointment       Appointment?  @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
   doctor            Doctor        @relation(fields: [doctorId], references: [id], onDelete: Restrict)
   patient           Patient       @relation(fields: [patientId], references: [id], onDelete: Restrict)
@@ -206,6 +209,25 @@ model MedicalReport {
   @@index([specialty], map: "medical_reports_specialty_idx")
   @@index([deletedAt], map: "medical_reports_deleted_at_idx")
   @@map("medical_reports")
+}
+
+model MedicalReportAccessGrant {
+  id                 String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  medicalReportId    String       @db.Uuid
+  doctorId           String       @db.Uuid
+  grantedByPatientId String       @db.Uuid
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  deletedAt          DateTime?
+  medicalReport      MedicalReport @relation(fields: [medicalReportId], references: [id], onDelete: Restrict)
+  doctor             Doctor       @relation("MedicalReportAccessDoctor", fields: [doctorId], references: [id], onDelete: Restrict)
+  grantedByPatient   Patient      @relation("MedicalReportAccessGrantedByPatient", fields: [grantedByPatientId], references: [id], onDelete: Restrict)
+
+  @@unique([medicalReportId, doctorId], map: "medical_report_access_grants_report_doctor_key")
+  @@index([doctorId, deletedAt], map: "medical_report_access_grants_doctor_deleted_idx")
+  @@index([medicalReportId, deletedAt], map: "medical_report_access_grants_report_deleted_idx")
+  @@index([grantedByPatientId, deletedAt], map: "medical_report_access_grants_patient_deleted_idx")
+  @@map("medical_report_access_grants")
 }
 
 model Attachment {

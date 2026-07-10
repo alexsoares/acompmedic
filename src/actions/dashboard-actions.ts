@@ -34,6 +34,26 @@ function parseLocalDateTime(input: string) {
   return date;
 }
 
+function resolveSafeDashboardPath(input: string | null, fallback: string) {
+  if (!input) return fallback;
+
+  try {
+    const parsed = new URL(input, "http://localhost");
+    return parsed.pathname.startsWith("/dashboard") ? `${parsed.pathname}${parsed.search}` : fallback;
+  } catch {
+    return input.startsWith("/dashboard") ? input : fallback;
+  }
+}
+
+function withUploadFeedback(path: string, status: "success" | "error", message: string) {
+  const [pathname, existingQuery] = path.split("?");
+  const params = new URLSearchParams(existingQuery ?? "");
+  params.set("uploadStatus", status);
+  params.set("uploadMessage", message);
+  const query = params.toString();
+  return query ? `${pathname}?${query}` : pathname;
+}
+
 export async function updateUserLocale(locale: string) {
   const appUser = await requireAuthenticatedAppUser();
   await db.user.update({
@@ -310,6 +330,186 @@ export async function createMedicalReport(formData: FormData) {
 
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/laudos");
+}
+
+export async function createPatientMedicalReport(formData: FormData) {
+  const returnPath = resolveSafeDashboardPath(nullableValue(formData, "returnPath"), "/dashboard/laudos");
+  let destination = withUploadFeedback(returnPath, "error", "Nao foi possivel enviar o laudo/exame.");
+
+  try {
+    const appUser = await requireAuthenticatedAppUser();
+
+    if (appUser.role !== "PATIENT") {
+      throw new ForbiddenError("Apenas pacientes podem usar este envio.");
+    }
+
+    const { patientId } = await resolveLinkedIds(appUser.id);
+
+    if (!patientId) {
+      throw new ForbiddenError("Registro de paciente não vinculado.");
+    }
+
+    const requestedPatientId = nullableValue(formData, "patientId");
+    if (requestedPatientId && requestedPatientId !== patientId) {
+      throw new ForbiddenError("Paciente inválido para este envio.");
+    }
+
+    const file = formData.get("file");
+
+    if (!(file instanceof File) || file.size === 0) {
+      throw new Error("Selecione um arquivo para enviar.");
+    }
+
+    const doctorId = value(formData, "doctorId");
+
+    const linkedDoctor = await db.doctor.findFirst({
+      where: {
+        id: doctorId,
+        deletedAt: null,
+        OR: [
+          {
+            assignedPatients: {
+              some: {
+                id: patientId,
+                deletedAt: null,
+              },
+            },
+          },
+          {
+            appointments: {
+              some: {
+                patientId,
+                deletedAt: null,
+              },
+            },
+          },
+        ],
+      },
+      select: { id: true },
+    });
+
+    if (!linkedDoctor) {
+      throw new ForbiddenError("Médico não vinculado ao paciente.");
+    }
+
+    const report = await db.medicalReport.create({
+      data: {
+        title: value(formData, "title"),
+        patientId,
+        doctorId,
+        createdByUserId: appUser.id,
+        reportDate: value(formData, "reportDate") ? new Date(value(formData, "reportDate")) : new Date(),
+        observations: nullableValue(formData, "observations"),
+        specialty: value(formData, "specialty"),
+      },
+    });
+
+    const storage = new MedicalReportStorageService(
+      new PrismaMedicalReportRepository(),
+      createMedicalReportsStorageBucket(),
+      {
+        bucketName: env.SUPABASE_STORAGE_BUCKET_MEDICAL_REPORTS,
+        maxUploadSizeBytes: env.MAX_UPLOAD_SIZE_BYTES,
+        storageBaseUrl: env.NEXT_PUBLIC_SUPABASE_URL,
+      },
+    );
+
+    await storage.uploadNewFile({
+      medicalReportId: report.id,
+      uploadedByUserId: appUser.id,
+      file,
+    });
+
+    revalidatePath("/dashboard/laudos");
+    revalidatePath(`/dashboard/pacientes/${patientId}`);
+    destination = withUploadFeedback(returnPath, "success", "Laudo/exame enviado com sucesso.");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Nao foi possivel enviar o laudo/exame.";
+    destination = withUploadFeedback(returnPath, "error", message);
+  }
+
+  redirect(destination);
+}
+
+export async function authorizeMedicalReportViewer(formData: FormData) {
+  const returnPath = resolveSafeDashboardPath(nullableValue(formData, "returnPath"), "/dashboard/laudos");
+  let destination = withUploadFeedback(returnPath, "error", "Nao foi possivel conceder autorizacao.");
+
+  try {
+    const appUser = await requireAuthenticatedAppUser();
+
+    if (appUser.role !== "PATIENT") {
+      throw new ForbiddenError("Somente pacientes podem conceder essa autorizacao.");
+    }
+
+    const { patientId } = await resolveLinkedIds(appUser.id);
+
+    if (!patientId) {
+      throw new ForbiddenError("Registro de paciente nao vinculado.");
+    }
+
+    const reportId = value(formData, "reportId");
+    const doctorId = value(formData, "doctorId");
+
+    const report = await db.medicalReport.findFirst({
+      where: {
+        id: reportId,
+        patientId,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        doctorId: true,
+      },
+    });
+
+    if (!report) {
+      throw new ForbiddenError("Laudo nao encontrado para este paciente.");
+    }
+
+    if (report.doctorId === doctorId) {
+      throw new Error("Este medico ja possui acesso principal ao laudo.");
+    }
+
+    const doctor = await db.doctor.findFirst({
+      where: {
+        id: doctorId,
+        deletedAt: null,
+      },
+      select: { id: true },
+    });
+
+    if (!doctor) {
+      throw new Error("Medico nao encontrado.");
+    }
+
+    await db.medicalReportAccessGrant.upsert({
+      where: {
+        medicalReportId_doctorId: {
+          medicalReportId: report.id,
+          doctorId,
+        },
+      },
+      update: {
+        deletedAt: null,
+        grantedByPatientId: patientId,
+      },
+      create: {
+        medicalReportId: report.id,
+        doctorId,
+        grantedByPatientId: patientId,
+      },
+    });
+
+    revalidatePath("/dashboard/laudos");
+    revalidatePath(`/dashboard/pacientes/${patientId}`);
+    destination = withUploadFeedback(returnPath, "success", "Autorizacao concedida ao medico selecionado.");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Nao foi possivel conceder autorizacao.";
+    destination = withUploadFeedback(returnPath, "error", message);
+  }
+
+  redirect(destination);
 }
 
 export async function deleteMedicalReport(formData: FormData) {
