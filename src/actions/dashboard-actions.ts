@@ -304,6 +304,11 @@ export async function updateAppointment(formData: FormData) {
 
   const startsAt = parseLocalDateTime(value(formData, "startsAt"));
   const durationMinutes = Number(value(formData, "durationMinutes") || "30");
+  const doctorId = nullableValue(formData, "doctorId");
+
+  if (doctorId) {
+    await assertOwnedDoctor(doctorId, appUser);
+  }
 
   await db.appointment.update({
     where: { id },
@@ -313,11 +318,13 @@ export async function updateAppointment(formData: FormData) {
       durationMinutes,
       status: (value(formData, "status") as AppointmentStatus) || AppointmentStatus.SCHEDULED,
       notes: nullableValue(formData, "notes"),
+      ...(doctorId ? { doctorId } : {}),
     },
   });
 
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/agenda");
+  redirect("/dashboard/agenda");
 }
 
 export async function cancelAppointment(formData: FormData) {
