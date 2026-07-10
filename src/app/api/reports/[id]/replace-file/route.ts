@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { PrismaMedicalReportRepository } from "@/features/medical-reports/repository/medical-report-repository";
 import { MedicalReportStorageService } from "@/features/medical-reports/services/medical-report-storage-service";
 import { env } from "@/lib/env";
+import { db } from "@/server/db";
 import { jsonError, withProtectedRoute } from "@/server/http";
 import { createMedicalReportsStorageBucket } from "@/server/supabase/storage";
 
@@ -35,6 +36,15 @@ export async function POST(
       }
 
       const { id } = await params;
+      const report = await db.medicalReport.findFirst({
+        where: { id, createdByUserId: appUser.id, deletedAt: null },
+        select: { id: true },
+      });
+
+      if (!report) {
+        return jsonError("Report not found for this user.", 404);
+      }
+
       const attachment = await storageService.replaceCurrentFile({
         medicalReportId: id,
         uploadedByUserId: appUser.id,

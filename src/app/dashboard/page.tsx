@@ -3,6 +3,7 @@ import { CalendarDays, FileText, Stethoscope, Users } from "lucide-react";
 
 import { Panel, PageHeader } from "@/components/dashboard/ui";
 import { db } from "@/server/db";
+import { requireAuthenticatedAppUser } from "@/server/security/auth";
 
 function formatTime(date: Date) {
   return new Intl.DateTimeFormat("pt-BR", {
@@ -14,14 +15,16 @@ function formatTime(date: Date) {
 }
 
 export default async function DashboardPage() {
+  const appUser = await requireAuthenticatedAppUser();
   const [patients, doctors, appointments, reports, nextAppointments] = await Promise.all([
-    db.patient.count({ where: { deletedAt: null } }),
-    db.doctor.count({ where: { deletedAt: null } }),
-    db.appointment.count({ where: { deletedAt: null } }),
-    db.medicalReport.count({ where: { deletedAt: null } }),
+    db.patient.count({ where: { deletedAt: null, createdByUserId: appUser.id } }),
+    db.doctor.count({ where: { deletedAt: null, createdByUserId: appUser.id } }),
+    db.appointment.count({ where: { deletedAt: null, createdByUserId: appUser.id } }),
+    db.medicalReport.count({ where: { deletedAt: null, createdByUserId: appUser.id } }),
     db.appointment.findMany({
       where: {
         deletedAt: null,
+        createdByUserId: appUser.id,
         startsAt: { gte: new Date() },
       },
       include: {

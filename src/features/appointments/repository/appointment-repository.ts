@@ -29,6 +29,7 @@ export type AppointmentUpdateData = {
 };
 
 export type AppointmentListFilters = {
+  createdByUserId?: string;
   doctorId?: string;
   patientId?: string;
   status?: AppointmentEntity["status"];
@@ -49,6 +50,7 @@ export class PrismaAppointmentRepository implements AppointmentRepository {
     return db.appointment.findMany({
       where: {
         deletedAt: null,
+        createdByUserId: filters.createdByUserId,
         doctorId: filters.doctorId,
         patientId: filters.patientId,
         status: filters.status,

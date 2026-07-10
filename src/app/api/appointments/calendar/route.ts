@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { PrismaAppointmentRepository } from "@/features/appointments/repository/appointment-repository";
 import { AppointmentService } from "@/features/appointments/services/appointment-service";
-import { withProtectedRoute } from "@/server/http";
+import { jsonError, withProtectedRoute } from "@/server/http";
 
 const service = new AppointmentService(new PrismaAppointmentRepository());
 
@@ -19,7 +19,11 @@ const calendarQuerySchema = z.object({
 export async function GET(request: NextRequest) {
   return withProtectedRoute(
     request,
-    async () => {
+    async ({ appUser }) => {
+      if (!appUser) {
+        return jsonError("Unauthorized.", 401);
+      }
+
       const parsed = calendarQuerySchema.parse({
         view: request.nextUrl.searchParams.get("view") ?? "week",
         date: request.nextUrl.searchParams.get("date") ?? new Date().toISOString(),
@@ -29,6 +33,7 @@ export async function GET(request: NextRequest) {
       });
 
       const data = await service.listByView(parsed.view, new Date(parsed.date), {
+        createdByUserId: appUser.id,
         doctorId: parsed.doctorId,
         patientId: parsed.patientId,
         status: parsed.status,

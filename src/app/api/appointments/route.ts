@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { PrismaAppointmentRepository } from "@/features/appointments/repository/appointment-repository";
 import { AppointmentService } from "@/features/appointments/services/appointment-service";
+import { db } from "@/server/db";
 import { jsonError, withProtectedRoute } from "@/server/http";
 
 const service = new AppointmentService(new PrismaAppointmentRepository());
@@ -28,7 +29,11 @@ const createAppointmentSchema = z.object({
 export async function GET(request: NextRequest) {
   return withProtectedRoute(
     request,
-    async () => {
+    async ({ appUser }) => {
+      if (!appUser) {
+        return jsonError("Unauthorized.", 401);
+      }
+
       const parsed = listQuerySchema.parse({
         doctorId: request.nextUrl.searchParams.get("doctorId") ?? undefined,
         patientId: request.nextUrl.searchParams.get("patientId") ?? undefined,
@@ -38,6 +43,7 @@ export async function GET(request: NextRequest) {
       });
 
       const appointments = await new PrismaAppointmentRepository().list({
+        createdByUserId: appUser.id,
         doctorId: parsed.doctorId,
         patientId: parsed.patientId,
         status: parsed.status,
@@ -63,6 +69,21 @@ export async function POST(request: NextRequest) {
       }
 
       const body = createAppointmentSchema.parse(await request.json());
+      const [patient, doctor] = await Promise.all([
+        db.patient.findFirst({
+          where: { id: body.patientId, createdByUserId: appUser.id, deletedAt: null },
+          select: { id: true },
+        }),
+        db.doctor.findFirst({
+          where: { id: body.doctorId, createdByUserId: appUser.id, deletedAt: null },
+          select: { id: true },
+        }),
+      ]);
+
+      if (!patient || !doctor) {
+        return jsonError("Patient or doctor not found for this user.", 404);
+      }
+
       const appointment = await service.create(body, {
         actorUserId: appUser.id,
         ipAddress: request.headers.get("x-forwarded-for"),

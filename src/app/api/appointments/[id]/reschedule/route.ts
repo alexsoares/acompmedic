@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { PrismaAppointmentRepository } from "@/features/appointments/repository/appointment-repository";
 import { AppointmentService } from "@/features/appointments/services/appointment-service";
+import { db } from "@/server/db";
 import { jsonError, withProtectedRoute } from "@/server/http";
 
 const service = new AppointmentService(new PrismaAppointmentRepository());
@@ -26,6 +27,15 @@ export async function PATCH(
 
       const body = rescheduleSchema.parse(await request.json());
       const { id } = await params;
+      const owned = await db.appointment.findFirst({
+        where: { id, createdByUserId: appUser.id, deletedAt: null },
+        select: { id: true },
+      });
+
+      if (!owned) {
+        return jsonError("Appointment not found for this user.", 404);
+      }
+
       const appointment = await service.reschedule(id, body, {
         actorUserId: appUser.id,
         ipAddress: request.headers.get("x-forwarded-for"),

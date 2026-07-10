@@ -34,10 +34,11 @@ function parseLocalDateTime(input: string) {
 }
 
 export async function createPatient(formData: FormData) {
-  await requireAuthenticatedAppUser();
+  const appUser = await requireAuthenticatedAppUser();
 
   await db.patient.create({
     data: {
+      createdByUserId: appUser.id,
       fullName: value(formData, "fullName"),
       cpf: value(formData, "cpf"),
       birthDate: value(formData, "birthDate") ? new Date(value(formData, "birthDate")) : null,
@@ -53,10 +54,10 @@ export async function createPatient(formData: FormData) {
 }
 
 export async function updatePatient(formData: FormData) {
-  await requireAuthenticatedAppUser();
+  const appUser = await requireAuthenticatedAppUser();
 
-  await db.patient.update({
-    where: { id: value(formData, "id") },
+  await db.patient.updateMany({
+    where: { id: value(formData, "id"), createdByUserId: appUser.id, deletedAt: null },
     data: {
       fullName: value(formData, "fullName"),
       cpf: value(formData, "cpf"),
@@ -72,10 +73,10 @@ export async function updatePatient(formData: FormData) {
 }
 
 export async function deletePatient(formData: FormData) {
-  await requireAuthenticatedAppUser();
+  const appUser = await requireAuthenticatedAppUser();
 
-  await db.patient.update({
-    where: { id: value(formData, "id") },
+  await db.patient.updateMany({
+    where: { id: value(formData, "id"), createdByUserId: appUser.id, deletedAt: null },
     data: { deletedAt: new Date() },
   });
 
@@ -83,10 +84,11 @@ export async function deletePatient(formData: FormData) {
 }
 
 export async function createDoctor(formData: FormData) {
-  await requireAuthenticatedAppUser();
+  const appUser = await requireAuthenticatedAppUser();
 
   await db.doctor.create({
     data: {
+      createdByUserId: appUser.id,
       fullName: value(formData, "fullName"),
       crm: value(formData, "crm"),
       specialty: value(formData, "specialty"),
@@ -99,10 +101,10 @@ export async function createDoctor(formData: FormData) {
 }
 
 export async function updateDoctor(formData: FormData) {
-  await requireAuthenticatedAppUser();
+  const appUser = await requireAuthenticatedAppUser();
 
-  await db.doctor.update({
-    where: { id: value(formData, "id") },
+  await db.doctor.updateMany({
+    where: { id: value(formData, "id"), createdByUserId: appUser.id, deletedAt: null },
     data: {
       fullName: value(formData, "fullName"),
       crm: value(formData, "crm"),
@@ -116,10 +118,10 @@ export async function updateDoctor(formData: FormData) {
 }
 
 export async function deleteDoctor(formData: FormData) {
-  await requireAuthenticatedAppUser();
+  const appUser = await requireAuthenticatedAppUser();
 
-  await db.doctor.update({
-    where: { id: value(formData, "id") },
+  await db.doctor.updateMany({
+    where: { id: value(formData, "id"), createdByUserId: appUser.id, deletedAt: null },
     data: { deletedAt: new Date() },
   });
 
@@ -132,11 +134,16 @@ export async function createAppointment(formData: FormData) {
   const durationMinutes = Number(value(formData, "durationMinutes") || "30");
   const endsAt = new Date(startsAt.getTime() + durationMinutes * 60_000);
   const service = new AppointmentService(new PrismaAppointmentRepository());
+  const patientId = value(formData, "patientId");
+  const doctorId = value(formData, "doctorId");
+
+  await assertOwnedPatient(patientId, appUser.id);
+  await assertOwnedDoctor(doctorId, appUser.id);
 
   await service.create(
     {
-      patientId: value(formData, "patientId"),
-      doctorId: value(formData, "doctorId"),
+      patientId,
+      doctorId,
       startsAt,
       endsAt,
       notes: nullableValue(formData, "notes"),
@@ -150,12 +157,12 @@ export async function createAppointment(formData: FormData) {
 }
 
 export async function updateAppointment(formData: FormData) {
-  await requireAuthenticatedAppUser();
+  const appUser = await requireAuthenticatedAppUser();
   const startsAt = parseLocalDateTime(value(formData, "startsAt"));
   const durationMinutes = Number(value(formData, "durationMinutes") || "30");
 
-  await db.appointment.update({
-    where: { id: value(formData, "id") },
+  await db.appointment.updateMany({
+    where: { id: value(formData, "id"), createdByUserId: appUser.id, deletedAt: null },
     data: {
       startsAt,
       endsAt: new Date(startsAt.getTime() + durationMinutes * 60_000),
@@ -172,6 +179,7 @@ export async function updateAppointment(formData: FormData) {
 export async function cancelAppointment(formData: FormData) {
   const appUser = await requireAuthenticatedAppUser();
   const service = new AppointmentService(new PrismaAppointmentRepository());
+  await assertOwnedAppointment(value(formData, "id"), appUser.id);
 
   await service.cancel(value(formData, "id"), { actorUserId: appUser.id });
 
@@ -187,12 +195,23 @@ export async function createMedicalReport(formData: FormData) {
     throw new Error("Arquivo obrigatório.");
   }
 
+  const patientId = value(formData, "patientId");
+  const doctorId = value(formData, "doctorId");
+  const appointmentId = nullableValue(formData, "appointmentId");
+
+  await assertOwnedPatient(patientId, appUser.id);
+  await assertOwnedDoctor(doctorId, appUser.id);
+
+  if (appointmentId) {
+    await assertOwnedAppointment(appointmentId, appUser.id);
+  }
+
   const report = await db.medicalReport.create({
     data: {
       title: value(formData, "title"),
-      patientId: value(formData, "patientId"),
-      doctorId: value(formData, "doctorId"),
-      appointmentId: nullableValue(formData, "appointmentId"),
+      patientId,
+      doctorId,
+      appointmentId,
       createdByUserId: appUser.id,
       reportDate: value(formData, "reportDate") ? new Date(value(formData, "reportDate")) : new Date(),
       observations: nullableValue(formData, "observations"),
@@ -221,10 +240,10 @@ export async function createMedicalReport(formData: FormData) {
 }
 
 export async function deleteMedicalReport(formData: FormData) {
-  await requireAuthenticatedAppUser();
+  const appUser = await requireAuthenticatedAppUser();
 
-  await db.medicalReport.update({
-    where: { id: value(formData, "id") },
+  await db.medicalReport.updateMany({
+    where: { id: value(formData, "id"), createdByUserId: appUser.id, deletedAt: null },
     data: { deletedAt: new Date() },
   });
 
@@ -235,4 +254,37 @@ export async function searchRedirect(formData: FormData) {
   const path = value(formData, "path");
   const q = value(formData, "q");
   redirect(q ? `${path}?q=${encodeURIComponent(q)}` : path);
+}
+
+async function assertOwnedPatient(patientId: string, userId: string) {
+  const patient = await db.patient.findFirst({
+    where: { id: patientId, createdByUserId: userId, deletedAt: null },
+    select: { id: true },
+  });
+
+  if (!patient) {
+    throw new Error("Paciente não encontrado para este usuário.");
+  }
+}
+
+async function assertOwnedDoctor(doctorId: string, userId: string) {
+  const doctor = await db.doctor.findFirst({
+    where: { id: doctorId, createdByUserId: userId, deletedAt: null },
+    select: { id: true },
+  });
+
+  if (!doctor) {
+    throw new Error("Médico não encontrado para este usuário.");
+  }
+}
+
+async function assertOwnedAppointment(appointmentId: string, userId: string) {
+  const appointment = await db.appointment.findFirst({
+    where: { id: appointmentId, createdByUserId: userId, deletedAt: null },
+    select: { id: true },
+  });
+
+  if (!appointment) {
+    throw new Error("Consulta não encontrada para este usuário.");
+  }
 }

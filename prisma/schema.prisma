@@ -61,6 +61,8 @@ model User {
   deletedAt           DateTime?
   profile             Profile?
   doctor              Doctor?
+  createdPatients     Patient[]      @relation("PatientCreatedBy")
+  createdDoctors      Doctor[]       @relation("DoctorCreatedBy")
   createdAppointments Appointment[]  @relation("AppointmentCreatedBy")
   createdReports      MedicalReport[] @relation("MedicalReportCreatedBy")
   uploadedAttachments Attachment[]   @relation("AttachmentUploadedBy")
@@ -89,6 +91,7 @@ model Profile {
 
 model Patient {
   id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdByUserId String?         @db.Uuid
   fullName        String          @db.VarChar(150)
   cpf             String          @unique(map: "patients_cpf_key") @db.VarChar(14)
   birthDate       DateTime?
@@ -100,9 +103,11 @@ model Patient {
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   deletedAt       DateTime?
+  createdBy       User?           @relation("PatientCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
   appointments    Appointment[]
   medicalReports  MedicalReport[]
 
+  @@index([createdByUserId], map: "patients_created_by_user_id_idx")
   @@index([fullName], map: "patients_full_name_idx")
   @@index([email], map: "patients_email_idx")
   @@index([deletedAt], map: "patients_deleted_at_idx")
@@ -112,6 +117,7 @@ model Patient {
 model Doctor {
   id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   userId         String?         @unique(map: "doctors_user_id_key") @db.Uuid
+  createdByUserId String?        @db.Uuid
   fullName       String          @db.VarChar(150)
   crm            String          @unique(map: "doctors_crm_key") @db.VarChar(30)
   specialty      String          @db.VarChar(100)
@@ -121,9 +127,11 @@ model Doctor {
   updatedAt      DateTime        @updatedAt
   deletedAt      DateTime?
   user           User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdBy      User?           @relation("DoctorCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
   appointments   Appointment[]
   medicalReports MedicalReport[]
 
+  @@index([createdByUserId], map: "doctors_created_by_user_id_idx")
   @@index([fullName], map: "doctors_full_name_idx")
   @@index([specialty], map: "doctors_specialty_idx")
   @@index([deletedAt], map: "doctors_deleted_at_idx")

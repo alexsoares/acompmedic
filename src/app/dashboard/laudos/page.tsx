@@ -4,14 +4,17 @@ import { createMedicalReport, deleteMedicalReport, searchRedirect } from "@/acti
 import { buttonClass, Field, inputClass, PageHeader, Panel, secondaryButtonClass, textareaClass } from "@/components/dashboard/ui";
 import { formatBytes } from "@/lib/utils";
 import { db } from "@/server/db";
+import { requireAuthenticatedAppUser } from "@/server/security/auth";
 
 export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const params = await searchParams;
   const q = params.q?.trim();
+  const appUser = await requireAuthenticatedAppUser();
   const [reports, patients, doctors, appointments] = await Promise.all([
     db.medicalReport.findMany({
       where: {
         deletedAt: null,
+        createdByUserId: appUser.id,
         OR: q
           ? [
               { title: { contains: q, mode: "insensitive" } },
@@ -33,10 +36,10 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       orderBy: { reportDate: "desc" },
       take: 80,
     }),
-    db.patient.findMany({ where: { deletedAt: null }, orderBy: { fullName: "asc" } }),
-    db.doctor.findMany({ where: { deletedAt: null }, orderBy: { fullName: "asc" } }),
+    db.patient.findMany({ where: { deletedAt: null, createdByUserId: appUser.id }, orderBy: { fullName: "asc" } }),
+    db.doctor.findMany({ where: { deletedAt: null, createdByUserId: appUser.id }, orderBy: { fullName: "asc" } }),
     db.appointment.findMany({
-      where: { deletedAt: null },
+      where: { deletedAt: null, createdByUserId: appUser.id },
       include: { patient: true, doctor: true },
       orderBy: { startsAt: "desc" },
       take: 80,
@@ -134,10 +137,10 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
                     <div className="flex flex-wrap gap-2">
                       {attachment ? (
                         <>
-                          <Link href={`/api/reports/${attachment.id}/view`} className={secondaryButtonClass}>
+                          <Link href={`/api/reports/${report.id}/view`} className={secondaryButtonClass}>
                             Visualizar
                           </Link>
-                          <Link href={`/api/reports/${attachment.id}/download`} className={secondaryButtonClass}>
+                          <Link href={`/api/reports/${report.id}/download`} className={secondaryButtonClass}>
                             Baixar
                           </Link>
                         </>

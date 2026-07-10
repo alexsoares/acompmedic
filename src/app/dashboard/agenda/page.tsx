@@ -8,6 +8,7 @@ import {
 } from "@/actions/dashboard-actions";
 import { buttonClass, Field, inputClass, PageHeader, Panel, secondaryButtonClass, textareaClass } from "@/components/dashboard/ui";
 import { db } from "@/server/db";
+import { requireAuthenticatedAppUser } from "@/server/security/auth";
 
 function dateTimeLocal(date: Date) {
   return date.toISOString().slice(0, 16);
@@ -20,11 +21,13 @@ export default async function AgendaPage({
 }) {
   const params = await searchParams;
   const q = params.q?.trim();
+  const appUser = await requireAuthenticatedAppUser();
 
   const [appointments, patients, doctors] = await Promise.all([
     db.appointment.findMany({
       where: {
         deletedAt: null,
+        createdByUserId: appUser.id,
         doctorId: params.doctorId || undefined,
         OR: q
           ? [
@@ -37,8 +40,8 @@ export default async function AgendaPage({
       orderBy: { startsAt: "asc" },
       take: 80,
     }),
-    db.patient.findMany({ where: { deletedAt: null }, orderBy: { fullName: "asc" } }),
-    db.doctor.findMany({ where: { deletedAt: null }, orderBy: { fullName: "asc" } }),
+    db.patient.findMany({ where: { deletedAt: null, createdByUserId: appUser.id }, orderBy: { fullName: "asc" } }),
+    db.doctor.findMany({ where: { deletedAt: null, createdByUserId: appUser.id }, orderBy: { fullName: "asc" } }),
   ]);
 
   return (

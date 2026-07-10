@@ -29,8 +29,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       const durationMinutes = body.durationMinutes ?? 30;
       const endsAt = body.endsAt ? new Date(body.endsAt) : new Date(startsAt.getTime() + durationMinutes * 60_000);
 
-      const appointment = await db.appointment.update({
-        where: { id },
+      const result = await db.appointment.updateMany({
+        where: { id, createdByUserId: appUser.id, deletedAt: null },
         data: {
           startsAt,
           endsAt,
@@ -39,6 +39,12 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           status: body.status,
         },
       });
+
+      if (result.count === 0) {
+        return jsonError("Appointment not found for this user.", 404);
+      }
+
+      const appointment = await db.appointment.findUnique({ where: { id } });
 
       return NextResponse.json({ data: appointment });
     },
@@ -60,6 +66,15 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
       const { id } = await params;
       const service = new AppointmentService(new PrismaAppointmentRepository());
+      const owned = await db.appointment.findFirst({
+        where: { id, createdByUserId: appUser.id, deletedAt: null },
+        select: { id: true },
+      });
+
+      if (!owned) {
+        return jsonError("Appointment not found for this user.", 404);
+      }
+
       const appointment = await service.cancel(id, {
         actorUserId: appUser.id,
         ipAddress: request.headers.get("x-forwarded-for"),
