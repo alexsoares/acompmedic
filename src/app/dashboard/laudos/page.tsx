@@ -6,6 +6,7 @@ import {
   createMedicalReport,
   createPatientMedicalReport,
   deleteMedicalReport,
+  revokeMedicalReportViewer,
   searchRedirect,
 } from "@/actions/dashboard-actions";
 import { buttonClass, Field, inputClass, PageHeader, Panel, secondaryButtonClass, textareaClass } from "@/components/dashboard/ui";
@@ -313,9 +314,21 @@ export default async function ReportsPage({
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Medicos autorizados para visualizacao</p>
                         {report.accessGrants.length > 0 ? (
-                          <p className="mt-1 text-sm text-slate-700">
-                            {report.accessGrants.map((grant) => `${grant.doctor.fullName} (${grant.doctor.specialty})`).join("; ")}
-                          </p>
+                          <div className="mt-2 space-y-2">
+                            {report.accessGrants.map((grant) => (
+                              <div key={grant.id} className="flex items-center justify-between rounded-md border border-slate-100 bg-slate-50 p-2 text-sm text-slate-700">
+                                <span>{grant.doctor.fullName} ({grant.doctor.specialty})</span>
+                                <form action={revokeMedicalReportViewer}>
+                                  <input type="hidden" name="reportId" value={report.id} />
+                                  <input type="hidden" name="doctorId" value={grant.doctorId} />
+                                  <input type="hidden" name="returnPath" value={patientUploadReturnPath} />
+                                  <button className="text-xs font-semibold text-rose-600 hover:text-rose-800 hover:underline">
+                                    Revogar
+                                  </button>
+                                </form>
+                              </div>
+                            ))}
+                          </div>
                         ) : (
                           <p className="mt-1 text-sm text-slate-500">Nenhum medico extra autorizado.</p>
                         )}
@@ -335,6 +348,8 @@ export default async function ReportsPage({
                           </select>
                           <button className={secondaryButtonClass}>Autorizar visualizacao</button>
                         </form>
+                      ) : allDoctors.filter((d) => d.id !== report.doctorId).length === 0 ? (
+                        <p className="text-sm text-slate-500">Não há outros médicos cadastrados no sistema.</p>
                       ) : (
                         <p className="text-sm text-slate-500">Todos os medicos disponiveis ja foram autorizados para este laudo.</p>
                       )}

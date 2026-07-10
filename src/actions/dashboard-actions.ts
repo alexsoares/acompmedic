@@ -512,6 +512,49 @@ export async function authorizeMedicalReportViewer(formData: FormData) {
   redirect(destination);
 }
 
+export async function revokeMedicalReportViewer(formData: FormData) {
+  const returnPath = resolveSafeDashboardPath(nullableValue(formData, "returnPath"), "/dashboard/laudos");
+  let destination = withUploadFeedback(returnPath, "error", "Nao foi possivel revogar autorizacao.");
+
+  try {
+    const appUser = await requireAuthenticatedAppUser();
+
+    if (appUser.role !== "PATIENT") {
+      throw new ForbiddenError("Somente pacientes podem revogar essa autorizacao.");
+    }
+
+    const { patientId } = await resolveLinkedIds(appUser.id);
+
+    if (!patientId) {
+      throw new ForbiddenError("Registro de paciente nao vinculado.");
+    }
+
+    const reportId = value(formData, "reportId");
+    const doctorId = value(formData, "doctorId");
+
+    await db.medicalReportAccessGrant.updateMany({
+      where: {
+        medicalReportId: reportId,
+        doctorId,
+        grantedByPatientId: patientId,
+        deletedAt: null,
+      },
+      data: {
+        deletedAt: new Date(),
+      },
+    });
+
+    revalidatePath("/dashboard/laudos");
+    revalidatePath(`/dashboard/pacientes/${patientId}`);
+    destination = withUploadFeedback(returnPath, "success", "Autorizacao revogada com sucesso.");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Nao foi possivel revogar autorizacao.";
+    destination = withUploadFeedback(returnPath, "error", message);
+  }
+
+  redirect(destination);
+}
+
 export async function deleteMedicalReport(formData: FormData) {
   const appUser = await requireAuthenticatedAppUser();
   const id = value(formData, "id");
