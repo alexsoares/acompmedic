@@ -53,7 +53,7 @@ export async function GET(
       }
 
       const signedUrl = await storageService.createViewUrl(attachment.id);
-      return NextResponse.json({ data: { signedUrl } });
+      return NextResponse.redirect(signedUrl);
     },
     {
       requireAuth: true,
