@@ -213,9 +213,9 @@ model MedicalReport {
 
 model MedicalReportAccessGrant {
   id                 String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  medicalReportId    String       @db.Uuid
-  doctorId           String       @db.Uuid
-  grantedByPatientId String       @db.Uuid
+  medicalReportId    String       @db.Uuid @map("medical_report_id")
+  doctorId           String       @db.Uuid @map("doctor_id")
+  grantedByPatientId String       @db.Uuid @map("granted_by_patient_id")
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
   deletedAt          DateTime?
