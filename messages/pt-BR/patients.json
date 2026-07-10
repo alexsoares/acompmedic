@@ -11,6 +11,7 @@
     "email": "Email",
     "address": "Endereço",
     "notes": "Observações",
+    "user": "Usuário",
     "assignedDoctor": "Médico responsável",
     "save": "Salvar paciente",
     "searchPlaceholder": "Buscar por nome, CPF ou email"

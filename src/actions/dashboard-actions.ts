@@ -159,6 +159,7 @@ export async function updateDoctor(formData: FormData) {
   });
 
   revalidatePath("/dashboard/medicos");
+  redirect("/dashboard/medicos");
 }
 
 export async function deleteDoctor(formData: FormData) {

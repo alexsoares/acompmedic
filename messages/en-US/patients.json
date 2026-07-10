@@ -11,6 +11,7 @@
     "email": "Email",
     "address": "Address",
     "notes": "Notes",
+    "user": "User",
     "assignedDoctor": "Assigned doctor",
     "save": "Save patient",
     "searchPlaceholder": "Search by name, CPF or email"
