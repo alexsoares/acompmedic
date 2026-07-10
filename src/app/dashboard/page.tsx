@@ -3,7 +3,7 @@ import { CalendarDays, FileText, Stethoscope, Users } from "lucide-react";
 
 import { Panel, PageHeader } from "@/components/dashboard/ui";
 import { db } from "@/server/db";
-import { requireAuthenticatedAppUser } from "@/server/security/auth";
+import { requireAuthenticatedAppUserOrRedirect } from "@/server/security/auth";
 
 function formatTime(date: Date) {
   return new Intl.DateTimeFormat("pt-BR", {
@@ -15,7 +15,7 @@ function formatTime(date: Date) {
 }
 
 export default async function DashboardPage() {
-  const appUser = await requireAuthenticatedAppUser();
+  const appUser = await requireAuthenticatedAppUserOrRedirect();
   const [patients, doctors, appointments, reports, nextAppointments] = await Promise.all([
     db.patient.count({ where: { deletedAt: null, createdByUserId: appUser.id } }),
     db.doctor.count({ where: { deletedAt: null, createdByUserId: appUser.id } }),

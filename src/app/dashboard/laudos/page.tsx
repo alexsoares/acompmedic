@@ -4,12 +4,12 @@ import { createMedicalReport, deleteMedicalReport, searchRedirect } from "@/acti
 import { buttonClass, Field, inputClass, PageHeader, Panel, secondaryButtonClass, textareaClass } from "@/components/dashboard/ui";
 import { formatBytes } from "@/lib/utils";
 import { db } from "@/server/db";
-import { requireAuthenticatedAppUser } from "@/server/security/auth";
+import { requireAuthenticatedAppUserOrRedirect } from "@/server/security/auth";
 
 export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const params = await searchParams;
   const q = params.q?.trim();
-  const appUser = await requireAuthenticatedAppUser();
+  const appUser = await requireAuthenticatedAppUserOrRedirect();
   const [reports, patients, doctors, appointments] = await Promise.all([
     db.medicalReport.findMany({
       where: {

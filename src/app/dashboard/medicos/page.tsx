@@ -1,12 +1,12 @@
 import { createDoctor, deleteDoctor, searchRedirect, updateDoctor } from "@/actions/dashboard-actions";
 import { buttonClass, Field, inputClass, PageHeader, Panel, secondaryButtonClass } from "@/components/dashboard/ui";
 import { db } from "@/server/db";
-import { requireAuthenticatedAppUser } from "@/server/security/auth";
+import { requireAuthenticatedAppUserOrRedirect } from "@/server/security/auth";
 
 export default async function DoctorsPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const params = await searchParams;
   const q = params.q?.trim();
-  const appUser = await requireAuthenticatedAppUser();
+  const appUser = await requireAuthenticatedAppUserOrRedirect();
   const doctors = await db.doctor.findMany({
     where: {
       deletedAt: null,

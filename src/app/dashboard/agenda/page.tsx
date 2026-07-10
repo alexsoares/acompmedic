@@ -8,7 +8,7 @@ import {
 } from "@/actions/dashboard-actions";
 import { buttonClass, Field, inputClass, PageHeader, Panel, secondaryButtonClass, textareaClass } from "@/components/dashboard/ui";
 import { db } from "@/server/db";
-import { requireAuthenticatedAppUser } from "@/server/security/auth";
+import { requireAuthenticatedAppUserOrRedirect } from "@/server/security/auth";
 
 function dateTimeLocal(date: Date) {
   return date.toISOString().slice(0, 16);
@@ -21,7 +21,7 @@ export default async function AgendaPage({
 }) {
   const params = await searchParams;
   const q = params.q?.trim();
-  const appUser = await requireAuthenticatedAppUser();
+  const appUser = await requireAuthenticatedAppUserOrRedirect();
 
   const [appointments, patients, doctors] = await Promise.all([
     db.appointment.findMany({

@@ -3,7 +3,7 @@ import { Gender } from "@prisma/client";
 import { createPatient, deletePatient, searchRedirect, updatePatient } from "@/actions/dashboard-actions";
 import { buttonClass, Field, inputClass, PageHeader, Panel, secondaryButtonClass } from "@/components/dashboard/ui";
 import { db } from "@/server/db";
-import { requireAuthenticatedAppUser } from "@/server/security/auth";
+import { requireAuthenticatedAppUserOrRedirect } from "@/server/security/auth";
 
 function dateInput(date: Date | null) {
   return date ? date.toISOString().slice(0, 10) : "";
@@ -12,7 +12,7 @@ function dateInput(date: Date | null) {
 export default async function PatientsPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const params = await searchParams;
   const q = params.q?.trim();
-  const appUser = await requireAuthenticatedAppUser();
+  const appUser = await requireAuthenticatedAppUserOrRedirect();
   const patients = await db.patient.findMany({
     where: {
       deletedAt: null,

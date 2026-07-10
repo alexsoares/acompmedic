@@ -1,5 +1,6 @@
 import { db } from "@/server/db";
 import { createSupabaseServerClient } from "@/server/supabase/server";
+import { redirect } from "next/navigation";
 
 export async function requireAuthenticatedAppUser() {
   const supabase = await createSupabaseServerClient();
@@ -30,4 +31,12 @@ export async function requireAuthenticatedAppUser() {
   }
 
   return appUser;
+}
+
+export async function requireAuthenticatedAppUserOrRedirect() {
+  try {
+    return await requireAuthenticatedAppUser();
+  } catch {
+    redirect("/login");
+  }
 }
